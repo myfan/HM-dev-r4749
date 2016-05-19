@@ -383,6 +383,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   if( uiDepth <= pps.getMaxCuDQPDepth() )
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
+#if ADP_DELTA_QP
+    idQP = MAX_ADP_DELTA_QP;
+#endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
   }
@@ -695,6 +698,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   if( uiDepth == pps.getMaxCuDQPDepth() )
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
+#if ADP_DELTA_QP
+    idQP = MAX_ADP_DELTA_QP;
+#endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
   }
@@ -1395,7 +1401,11 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   rpcTempCU->getTotalCost() = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
   xCheckDQP( rpcTempCU );
-
+//#if ADP_DELTA_QP | 1
+//  if (rpcTempCU->getWidth(0) >= 16 && rpcTempCU->getQP(0) == 32){
+//      printf("QP: %d, rdcost: %f, dist: %d, bit: %d\n", rpcTempCU->getQP(0), rpcTempCU->getTotalCost(), rpcTempCU->getTotalDistortion(), rpcTempCU->getTotalBits());
+//  }
+//#endif
   xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 }
 
@@ -1510,7 +1520,10 @@ Void TEncCu::xCheckDQP( TComDataCU* pcCU )
   const TComPPS &pps = *(pcCU->getSlice()->getPPS());
   if ( pps.getUseDQP() && uiDepth <= pps.getMaxCuDQPDepth() )
   {
-    if ( pcCU->getQtRootCbf( 0) )
+#if ADP_DELTA_QP
+    assert(0);
+#endif
+    if ( pcCU->getQtRootCbf( 0) ) //! if only all the coefficients in one TU are not zero, the deltaQP needs to be transmitted, otherwise, QP is not needed in decoder end.
     {
       m_pcEntropyCoder->resetBits();
       m_pcEntropyCoder->encodeQP( pcCU, 0, false );

@@ -2216,6 +2216,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
   //===== set QP and clear Cbf =====
+#if ADP_DELTA_QP
+  pcCU->setQPSubParts(pcCU->getQP(0), 0, uiDepth);
+  assert(pps.getUseDQP() == false);
+#else
   if ( pps.getUseDQP() == true)
   {
     pcCU->setQPSubParts( pcCU->getQP(0), 0, uiDepth );
@@ -2224,6 +2228,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   {
     pcCU->setQPSubParts( pcCU->getSlice()->getSliceQp(), 0, uiDepth );
   }
+#endif
 
   //===== loop over partitions =====
   TComTURecurse tuRecurseCU(pcCU, 0);

@@ -876,8 +876,11 @@ Void TEncTop::xInitHrdParameters()
 Void TEncTop::xInitPPS()
 {
   m_cPPS.setConstrainedIntraPred( m_bUseConstrainedIntraPred );
+#if ADP_DELTA_QP
+  Bool bUseDQP = false;
+#else
   Bool bUseDQP = (getMaxCuDQPDepth() > 0)? true : false;
-
+#endif
   if((getMaxDeltaQP() != 0 )|| getUseAdaptiveQP())
   {
     bUseDQP = true;
@@ -902,7 +905,11 @@ Void TEncTop::xInitPPS()
   else
   {
     m_cPPS.setUseDQP(false);
+#if ADP_DELTA_QP
+    m_cPPS.setMaxCuDQPDepth(m_iMaxCuDQPDepth);
+#else
     m_cPPS.setMaxCuDQPDepth( 0 );
+#endif
   }
 
   if ( m_diffCuChromaQpOffsetDepth >= 0 )

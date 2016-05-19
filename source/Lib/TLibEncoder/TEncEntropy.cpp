@@ -594,6 +594,9 @@ Void TEncEntropy::encodeQP( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
 
   if ( pcCU->getSlice()->getPPS()->getUseDQP() )
   {
+#if ADP_DELTA_QP
+      assert(0);
+#endif
     m_pcEntropyCoderIf->codeDeltaQP( pcCU, uiAbsPartIdx );
   }
 }
