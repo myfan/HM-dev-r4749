@@ -388,16 +388,19 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     idQP = MAX_ADP_DELTA_QP;
 #else
     if (rpcTempCU->getWidth(0) == 8){
-        if (iBaseQP == 22)
-            iBaseQP = iBaseQP - 1;
-        else if (iBaseQP == 27)
-            iBaseQP = iBaseQP - 1;
-        else if (iBaseQP == 32)
-            iBaseQP = iBaseQP - 2;
-        else if (iBaseQP == 37)
-            iBaseQP = iBaseQP - 3;
-        else
-            assert(0);
+        //if (iBaseQP == 22)
+        //    iBaseQP = iBaseQP - 1;
+        //else if (iBaseQP == 27)
+        //    iBaseQP = iBaseQP - 1;
+        //else if (iBaseQP == 32)
+        //    iBaseQP = iBaseQP - 2;
+        //else if (iBaseQP == 37)
+        //    iBaseQP = iBaseQP - 3;
+        //else
+        //    assert(0);
+    }
+    else if (rpcTempCU->getWidth(0) == 16){
+        iBaseQP = iBaseQP - 1;
     }
 #endif
 #endif

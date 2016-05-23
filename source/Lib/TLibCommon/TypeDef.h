@@ -128,7 +128,7 @@
 #define ADP_DELTA_QP                                      1
 #if ADP_DELTA_QP
 #define OUTPUT_ADPQP_FATURES                              0
-#define MAX_ADP_DELTA_QP                                  5
+#define MAX_ADP_DELTA_QP                                  3
 #endif
 
 // ====================================================================================================================
