@@ -384,7 +384,22 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
 #if ADP_DELTA_QP
+#if OUTPUT_ADPQP_FATURES
     idQP = MAX_ADP_DELTA_QP;
+#else
+    if (rpcTempCU->getWidth(0) == 8){
+        if (iBaseQP == 22)
+            iBaseQP = iBaseQP - 1;
+        else if (iBaseQP == 27)
+            iBaseQP = iBaseQP - 1;
+        else if (iBaseQP == 32)
+            iBaseQP = iBaseQP - 2;
+        else if (iBaseQP == 37)
+            iBaseQP = iBaseQP - 3;
+        else
+            assert(0);
+    }
+#endif
 #endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
@@ -474,6 +489,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         iQP = iMinQP;
       }
+#if OUTPUT_ADPQP_FATURES
+      if (rpcBestCU->getSlice()->getSliceType() != I_SLICE)
+      {
+          printf("%d", rpcBestCU->getQP(0)); // get the best QP
+      }
+#endif
     }
 
     if(!earlyDetectionSkipMode)
@@ -675,6 +696,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           iQP = iMinQP;
         }
       }
+#if OUTPUT_ADPQP_FATURES
+      printf("CU%d %d %d\n", rpcBestCU->getWidth(0), iBaseQP, rpcBestCU->getQP(0)); // get the best QP
+#endif
     }
 
     if( rpcBestCU->getTotalCost()!=MAX_DOUBLE )
@@ -699,7 +723,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
 #if ADP_DELTA_QP
+#if OUTPUT_ADPQP_FATURES
     idQP = MAX_ADP_DELTA_QP;
+#else
+
+#endif
 #endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
