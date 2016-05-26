@@ -399,7 +399,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         //else
         //    assert(0);
     }
-    else if (rpcTempCU->getWidth(0) == 16){
+    else if (rpcTempCU->getWidth(0) == 32){
         iBaseQP = iBaseQP - 1;
     }
 #endif
