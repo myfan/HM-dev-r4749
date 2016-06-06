@@ -2170,8 +2170,145 @@ TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
     } while (tuRecurseChild.nextSection(rTu));
   }
 }
+#if OUTPUT_ADPQP_FATURES
+double calc_ave_sse128(Pel *piSrc, UInt uiStride, UInt uiWidth, UInt uiHeight)
+{
+    int i, j;
+    int widhig = uiWidth*uiHeight; // only downscale height
+
+    int tmpSum_sse = 0;
+    __m128i row1, row2, row1Low, row2Low;
+    __m128i zero = _mm_setzero_si128();
+    int num_16blk;
+
+    if (uiWidth % 8 == 0){ // 16x16~64x64
+        num_16blk = uiWidth / 8;
+        for (i = 0; i < num_16blk; i++){
+            row1 = _mm_lddqu_si128((__m128i const*)(piSrc + 8 * i));
+            for (j = 1; j < uiHeight; j++){
+                row2 = _mm_lddqu_si128((__m128i const*)(piSrc + j * uiStride + 8 * i));
+                row1 = _mm_add_epi16(row1, row2);
+            }
+            for (j = 0; j < 8; j++)
+            {
+                tmpSum_sse += row1.m128i_i16[j];
+            }
+        }
+    }
+    else if (uiWidth == 4){ // 8x8
+        row1 = _mm_lddqu_si128((__m128i const*)piSrc);
+        row1Low = _mm_unpacklo_epi8(row1, zero);
+        for (j = 1; j < uiHeight; j++){
+            row2 = _mm_lddqu_si128((__m128i const*)(piSrc + j * uiStride));
+            row2Low = _mm_unpacklo_epi8(row2, zero);
+            row1Low = _mm_add_epi16(row1Low, row2Low);
+        }
+
+        for (j = 0; j < 8; j++)
+        {
+            tmpSum_sse += row1Low.m128i_i16[j];
+        }
+    }
+    else
+        assert(0);
+
+    return (double)tmpSum_sse / widhig;
+}
+
+double calc_var_sse128(Pel *piSrc, UInt uiStride, UInt uiWidth, UInt uiHeight, Double ave)
+{
+    int i, j;
+    int widhig = uiWidth*uiHeight; // only downscale height
+
+    int tmpSum_sse = 0;
+    __m128i row1, row1Low, row2, row2Low;
+    __m128i zero = _mm_setzero_si128();
+    int num_16blk;
+
+    if (uiWidth % 8 == 0){ // 16x16~64x64
+        num_16blk = uiWidth / 8;
+        for (i = 0; i < num_16blk; i++){
+            row1 = _mm_lddqu_si128((__m128i const*)(piSrc + 8 * i));
+            row1Low = _mm_madd_epi16(row1, row1);
+
+            for (j = 1; j < uiHeight; j++){
+                row2 = _mm_lddqu_si128((__m128i const*)(piSrc + j * uiStride + 8 * i));
+                row2Low = _mm_madd_epi16(row2, row2);
+                row1Low = _mm_add_epi32(row1Low, row2Low);
+            }
+
+            for (j = 0; j < 4; j++)
+            {
+                tmpSum_sse += row1Low.m128i_i32[j];
+            }
+        }
+    }
+    else if (uiWidth == 4){ // 8 / or 4x16
+        row1 = _mm_lddqu_si128((__m128i const*)piSrc);
+        row1Low = _mm_madd_epi16(row1, row1);
 
 
+        for (j = 1; j < uiHeight; j++){
+            row2 = _mm_lddqu_si128((__m128i const*)(piSrc + j * uiStride));
+            row2Low = _mm_madd_epi16(row2, row2);
+            row1Low = _mm_add_epi32(row1Low, row2Low);
+        }
+
+        for (j = 0; j < uiWidth / 2; j++)
+        {
+            tmpSum_sse += row1Low.m128i_i32[j];
+        }
+    }
+    else
+        assert(0);
+    return ((double)tmpSum_sse / widhig - ave*ave);
+}
+
+void xGenIntraInfo(Pel *piSrc, UInt uiStride, UInt uiWidth, UInt uiHeight, Double &ave_2Nx2N, Double &var_2Nx2N, Double &ave_var, Double &var_var)
+{
+    Double tmp_sum = 0;
+#if !FAST_INTRA_CU_SPLIT_PRUNE
+    UInt x, y;
+    for (y = 0; y < uiHeight; y++){
+        for (x = 0; x < uiWidth; x++){
+            tmp_sum += piSrc[y * uiStride + x];
+        }
+    }
+    ave_2Nx2N = tmp_sum / (uiWidth * uiHeight);
+
+    tmp_sum = 0;
+    for (y = 0; y < uiHeight; y++){
+        for (x = 0; x < uiWidth; x++){
+            tmp_sum += (piSrc[y * uiStride + x] - ave_2Nx2N) * (piSrc[y * uiStride + x] - ave_2Nx2N);
+        }
+    }
+    var_2Nx2N = tmp_sum / (uiWidth * uiHeight);
+#endif
+    // the variable of the variables of four sub-blocks
+    UInt uiSubWidth = uiWidth / 2;
+    UInt uiSubHeight = uiHeight / 2;
+    UInt uiPixNum = uiSubWidth * uiSubHeight;
+    Double ave[4], var[4];
+    for (UInt blk = 0; blk < 4; blk++){
+        Pel* piSubSrc = piSrc + (blk / 2) * uiSubHeight * uiStride + (blk % 2) * uiSubWidth;
+        ave[blk] = calc_ave_sse128(piSubSrc, uiStride, uiSubWidth, uiSubHeight);
+        var[blk] = calc_var_sse128(piSubSrc, uiStride, uiSubWidth, uiSubHeight, ave[blk]);
+    }
+
+    tmp_sum = 0;
+    for (UInt blk = 0; blk < 4; blk++){
+        tmp_sum += var[blk];
+    }
+    ave_var = tmp_sum / 4;
+
+    tmp_sum = 0;
+    for (UInt blk = 0; blk < 4; blk++){
+        tmp_sum += (var[blk] - ave_var) * (var[blk] - ave_var);
+    }
+    var_var = tmp_sum / 4;
+}
+
+#endif
 
 Void
 TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
@@ -2341,6 +2478,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     Distortion uiBestPUDistY = 0;
     Double     dBestPUCost   = MAX_DOUBLE;
 
+#if EXPLOIT_NO_BIT_COST
+    Pel pcBestPred[4096];
+#endif
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
     UInt max=numModesForFullRD;
 
@@ -2376,12 +2516,29 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
       // check r-d cost
-      if( dPUCost < dBestPUCost )
+      if (dPUCost < dBestPUCost)
       {
-        DEBUG_STRING_SWAP(sPU, sMode)
+          DEBUG_STRING_SWAP(sPU, sMode)
 #if HHI_RQT_INTRA_SPEEDUP_MOD
-        uiSecondBestMode  = uiBestPUMode;
-        dSecondBestPUCost = dBestPUCost;
+              uiSecondBestMode  = uiBestPUMode;
+          dSecondBestPUCost = dBestPUCost;
+#endif
+#if EXPLOIT_NO_BIT_COST
+          const UInt uiAbsPartIdx = tuRecurseWithPU.GetAbsPartIdxTU();
+          Pel* piPred = pcPredYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+          Pel* piBestPred = pcBestPred;
+          UInt blkwidth = pcPredYuv->getHeight(COMPONENT_Y);
+          UInt blkheight = pcPredYuv->getWidth(COMPONENT_Y);
+          UInt blkstride = pcPredYuv->getStride(COMPONENT_Y);
+          
+          const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Y);
+          for (UInt y = 0; y < blkheight; y++){
+              for (UInt x = 0; x < blkwidth; x++){
+                  memcpy(piBestPred, pcPredYuv, blkstride * sizeof(Pel));
+              }
+              piPred += blkstride;
+              piBestPred += blkstride;
+          }
 #endif
         uiBestPUMode  = uiOrgMode;
         uiBestPUDistY = uiPUDistY;
@@ -2489,6 +2646,41 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
       }
     } // Mode loop
+#endif
+
+#if OUTPUT_ADPQP_FATURES
+#if EXPLOIT_NO_BIT_COST
+    // prediction blocks
+    Pel* piBestPred = pcBestPred;
+    Double ave_pred, var_pred, ave_var_pred, var_var_pred;
+    xGenIntraInfo(piOrg, blkstride, blkwidth, blkheight, ave_pred, var_pred, ave_var_pred, var_var_pred);
+
+    // neighboring blocks
+    const UInt uiPartIdxLT = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+    if (isAboveLeftAvailable(pcCU, uiPartIdxLT)){
+        Pel pcRecNgb[4096];
+        Pel *piRecNgb = pcRecNgb;
+        Int iPicStride = pcCU->getPic()->getStride(COMPONENT_Y);
+        Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);
+        Pel *piRecTemp = piRoiOrigin - (blkheight / 2) * iPicStride;
+        assert(blkwidth == blkheight);
+        for (int y = 0; y < blkheight / 2; y++){
+            memcpy(piRecNgb, piRecTemp, blkstride * sizeof(Pel));
+            piRecTemp += blkstride;
+            piRecNgb += iPicStride;
+        }
+        piRecTemp = piRoiOrigin - (blkwidth / 2);
+        for (int x = 0; x < blkwidth / 2; x++){
+            for (int y = 0; y < blkheight; y++){
+                piRecNgb[y] = piRecTemp[y];
+            }
+            piRecTemp++;
+            piRecNgb += blkstride;
+        }
+    }
+    Double ave_ngb, var_ngb, ave_var_ngb, var_var_ngb;
+    xGenIntraInfo(piOrg, blkstride, blkwidth, blkheight, ave_ngb, var_ngb, ave_var_ngb, var_var_ngb);
+#endif
 #endif
 
     DEBUG_STRING_APPEND(sDebug, sPU)

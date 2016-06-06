@@ -82,7 +82,7 @@
 #define T0196_SELECTIVE_RDOQ                              1 ///< selective RDOQ
 #define U0040_MODIFIED_WEIGHTEDPREDICTION_WITH_BIPRED_AND_CLIPPING 1
 #define U0033_ALTERNATIVE_TRANSFER_CHARACTERISTICS_SEI    1 ///< Alternative transfer characteristics SEI message (JCTVC-U0033, with syntax naming from V1005)
-#define W0062_RECALCULATE_QP_TO_ALIGN_WITH_LAMBDA         0 ///< This recalculates QP to align with the derived lambda (same relation as for all intra coding is used). Currently disabled by default.
+#define W0062_RECALCULATE_QP_TO_ALIGN_WITH_LAMBDA         1 ///< This recalculates QP to align with the derived lambda (same relation as for all intra coding is used). Currently disabled by default.
 #define OPTIONAL_RESET_SAO_ENCODING_AFTER_IRAP            1 ///< Adds command line option to reset SAO parameters after each IRAP.
 
 // ====================================================================================================================
@@ -125,10 +125,11 @@
 #define W0038_DB_OPT                                      1 ///< adaptive DB parameter selection, LoopFilterOffsetInPPS and LoopFilterDisable are set to 0 and DeblockingFilterMetric=2;
 #define W0038_CQP_ADJ                                     1 ///< chroma QP adjustment based on TL, CQPTLAdjustEnabled is set to 1;
 
-#define ADP_DELTA_QP                                      0
+#define ADP_DELTA_QP                                      1
 #if ADP_DELTA_QP
-#define OUTPUT_ADPQP_FATURES                              0
+#define OUTPUT_ADPQP_FATURES                              1
 #define MAX_ADP_DELTA_QP                                  3
+#define EXPLOIT_NO_BIT_COST                               0
 #endif
 
 // ====================================================================================================================

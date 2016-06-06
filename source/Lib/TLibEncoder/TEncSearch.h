@@ -455,6 +455,7 @@ protected:
 
 };// END CLASS DEFINITION TEncSearch
 
+void xGenIntraInfo(Pel *piSrc, UInt uiStride, UInt uiWidth, UInt uiHeight, Double &ave_2Nx2N, Double &var_2Nx2N, Double &ave_var, Double &var_var);
 //! \}
 
 #endif // __TENCSEARCH__

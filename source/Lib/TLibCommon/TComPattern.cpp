@@ -65,7 +65,7 @@ Void fillReferenceSamples( const Int bitDepth,
                            const Int iPicStride );
 
 /// constrained intra prediction
-Bool  isAboveLeftAvailable  ( const TComDataCU* pcCU, UInt uiPartIdxLT );
+
 Int   isAboveAvailable      ( const TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );
 Int   isLeftAvailable       ( const TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags );
 Int   isAboveRightAvailable ( const TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );

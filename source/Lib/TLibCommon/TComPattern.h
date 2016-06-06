@@ -102,7 +102,7 @@ public:
   /// set parameters from Pel buffers for accessing neighbouring pixels
   Void initPattern( Pel* piY, Int iRoiWidth, Int iRoiHeight, Int iStride, Int bitDepthLuma );
 };
-
+Bool  isAboveLeftAvailable(const TComDataCU* pcCU, UInt uiPartIdxLT);
 //! \}
 
 #endif // __TCOMPATTERN__

@@ -492,12 +492,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         iQP = iMinQP;
       }
-#if OUTPUT_ADPQP_FATURES
-      if (rpcBestCU->getSlice()->getSliceType() != I_SLICE)
-      {
-          printf("%d", rpcBestCU->getQP(0)); // get the best QP
-      }
-#endif
     }
 
     if(!earlyDetectionSkipMode)
@@ -700,7 +694,20 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 #if OUTPUT_ADPQP_FATURES
-      printf("CU%d %d %d\n", rpcBestCU->getWidth(0), iBaseQP, rpcBestCU->getQP(0)); // get the best QP
+      if (uiDepth <= pps.getMaxCuDQPDepth())
+      {
+          // get the best QP
+          Pel* piOrg = m_ppcOrigYuv[uiDepth]->getAddr(COMPONENT_Y, 0);
+          UInt blkwidth = m_ppcOrigYuv[uiDepth]->getHeight(COMPONENT_Y);
+          UInt blkheight = m_ppcOrigYuv[uiDepth]->getWidth(COMPONENT_Y);
+          UInt blkstride = m_ppcOrigYuv[uiDepth]->getStride(COMPONENT_Y);
+          Double ave_org, var_org, ave_var_org, var_var_org;
+          xGenIntraInfo(piOrg, blkstride, blkwidth, blkheight, ave_org, var_org, ave_var_org, var_var_org);
+          printf("%f %f %f %f ", ave_org, var_org, ave_var_org, var_var_org);
+
+          // get the best QP
+          printf("CU%d %d %d\n", rpcBestCU->getWidth(0), iBaseQP, rpcBestCU->getQP(0));
+      }
 #endif
     }
 
