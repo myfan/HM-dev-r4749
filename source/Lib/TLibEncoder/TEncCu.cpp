@@ -387,21 +387,25 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if OUTPUT_ADPQP_FATURES
     idQP = MAX_ADP_DELTA_QP;
 #else
-    if (rpcTempCU->getWidth(0) == 8){
-        //if (iBaseQP == 22)
-        //    iBaseQP = iBaseQP - 1;
-        //else if (iBaseQP == 27)
-        //    iBaseQP = iBaseQP - 1;
-        //else if (iBaseQP == 32)
-        //    iBaseQP = iBaseQP - 2;
-        //else if (iBaseQP == 37)
-        //    iBaseQP = iBaseQP - 3;
-        //else
-        //    assert(0);
+    assert(idQP == 0);
+    if (rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
+        iBaseQP = iBaseQP - 2;
     }
-    else if (rpcTempCU->getWidth(0) == 32){
-        iBaseQP = iBaseQP - 1;
-    }
+    //if (rpcTempCU->getWidth(0) == 8){
+    //    //if (iBaseQP == 22)
+    //    //    iBaseQP = iBaseQP - 1;
+    //    //else if (iBaseQP == 27)
+    //    //    iBaseQP = iBaseQP - 1;
+    //    //else if (iBaseQP == 32)
+    //    //    iBaseQP = iBaseQP - 2;
+    //    //else if (iBaseQP == 37)
+    //    //    iBaseQP = iBaseQP - 3;
+    //    //else
+    //    //    assert(0);
+    //}
+    //else if (rpcTempCU->getWidth(0) == 32){
+    //    iBaseQP = iBaseQP - 1;
+    //}
 #endif
 #endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
@@ -703,10 +707,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           UInt blkstride = m_ppcOrigYuv[uiDepth]->getStride(COMPONENT_Y);
           Double ave_org, var_org, ave_var_org, var_var_org;
           xGenIntraInfo(piOrg, blkstride, blkwidth, blkheight, ave_org, var_org, ave_var_org, var_var_org);
-          printf("%f %f %f %f ", ave_org, var_org, ave_var_org, var_var_org);
-
           // get the best QP
-          printf("CU%d %d %d\n", rpcBestCU->getWidth(0), iBaseQP, rpcBestCU->getQP(0));
+          printf("CU%d %d %d ", rpcBestCU->getWidth(0), iBaseQP, rpcBestCU->getQP(0));
+          if (rpcBestCU->getSlice()->getSliceType() == I_SLICE){
+              printf("I ");
+          }
+          else if (rpcBestCU->getSlice()->getSliceType() == B_SLICE){
+              printf("B%d ", rpcBestCU->getSlice()->getTLayer());
+          }
+          printf("%f %f %f %f\n", ave_org, var_org, ave_var_org, var_var_org);
       }
 #endif
     }
@@ -736,7 +745,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if OUTPUT_ADPQP_FATURES
     idQP = MAX_ADP_DELTA_QP;
 #else
-
+    assert(idQP == 0);
+    if(rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
+        iBaseQP = iBaseQP - 2;
+    }
 #endif
 #endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
