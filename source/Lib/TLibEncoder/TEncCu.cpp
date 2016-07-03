@@ -385,7 +385,8 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
 #if ADP_DELTA_QP
 #if OUTPUT_ADPQP_FATURES
-    idQP = MAX_ADP_DELTA_QP;
+    if (uiDepth == OUTPUT_DELTAQP_DEPTH)
+        idQP = MAX_ADP_DELTA_QP;
 #else
     assert(idQP == 0);
     if (rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
@@ -407,9 +408,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     //    iBaseQP = iBaseQP - 1;
     //}
 #endif
-#endif
+    iMinQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP - idQP);
+    iMaxQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP + idQP);
+#else
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
+#endif
   }
   else
   {
@@ -698,7 +702,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 #if OUTPUT_ADPQP_FATURES
-      if (uiDepth <= pps.getMaxCuDQPDepth())
+      if (uiDepth == OUTPUT_DELTAQP_DEPTH)
       {
           // get the best QP
           Pel* piOrg = m_ppcOrigYuv[uiDepth]->getAddr(COMPONENT_Y, 0);
@@ -743,7 +747,8 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
 #if ADP_DELTA_QP
 #if OUTPUT_ADPQP_FATURES
-    idQP = MAX_ADP_DELTA_QP;
+    //idQP = MAX_ADP_DELTA_QP;
+    idQP = 0;
 #else
     assert(idQP == 0);
     if(rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
