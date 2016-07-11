@@ -4055,6 +4055,8 @@ Void TEncSearch::xPatternSearchFast( const TComDataCU* const  pcCU,
 {
   assert (MD_LEFT < NUM_MV_PREDICTORS);
   pcCU->getMvPredLeft       ( m_acMvPredictors[MD_LEFT] );
+  assert(m_acMvPredictors[MD_LEFT].getHor() == 0);
+  assert(m_acMvPredictors[MD_LEFT].getVer() == 0);
   assert (MD_ABOVE < NUM_MV_PREDICTORS);
   pcCU->getMvPredAbove      ( m_acMvPredictors[MD_ABOVE] );
   assert (MD_ABOVE_RIGHT < NUM_MV_PREDICTORS);

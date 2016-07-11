@@ -388,25 +388,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     if (uiDepth == OUTPUT_DELTAQP_DEPTH)
         idQP = MAX_ADP_DELTA_QP;
 #else
-    assert(idQP == 0);
-    if (rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
-        iBaseQP = iBaseQP - 2;
+    //assert(idQP == 0);
+    //if (rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 2){
+    //    if (uiWidth == 8)
+    //        iBaseQP = iBaseQP - 1;
+    //}
+
+    if ((rpcBestCU->getSlice()->getSliceType() == B_SLICE) && (rpcBestCU->getSlice()->getTLayer() >= 2) && (uiWidth == 8)){
+        UInt LeftPartIdx = MAX_UINT;
+        UInt AbovePartIdx = MAX_UINT;
+        UInt AboveLeftPartIdx = MAX_UINT;
+
+        const TComDataCU *pcCULeft = rpcBestCU->getPULeft(LeftPartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+        const TComDataCU *pcCUAbove = rpcBestCU->getPUAbove(AbovePartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+        const TComDataCU *pcCUAboveLeft = rpcBestCU->getPUAboveLeft(AboveLeftPartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+
+        if ((pcCULeft == NULL) || (pcCUAbove == NULL) || (pcCUAboveLeft == NULL)){
+        }
+        else{
+            TComMv LeftMv = pcCULeft->getCUMvField(RefPicList(0))->getMv(LeftPartIdx);
+            TComMv AboveMv = pcCUAbove->getCUMvField(RefPicList(0))->getMv(AbovePartIdx);
+            TComMv AboveLeftMv = pcCUAboveLeft->getCUMvField(RefPicList(0))->getMv(AboveLeftPartIdx);
+            if ((LeftMv.getAbsHor() != 0) || (LeftMv.getAbsVer() != 0) || (AboveMv.getAbsHor() != 0) || (AboveMv.getAbsVer() != 0) || (AboveLeftMv.getAbsHor() != 0) || (AboveLeftMv.getAbsVer() != 0)){
+                iBaseQP = iBaseQP - 1;
+            }
+        }
     }
-    //if (rpcTempCU->getWidth(0) == 8){
-    //    //if (iBaseQP == 22)
-    //    //    iBaseQP = iBaseQP - 1;
-    //    //else if (iBaseQP == 27)
-    //    //    iBaseQP = iBaseQP - 1;
-    //    //else if (iBaseQP == 32)
-    //    //    iBaseQP = iBaseQP - 2;
-    //    //else if (iBaseQP == 37)
-    //    //    iBaseQP = iBaseQP - 3;
-    //    //else
-    //    //    assert(0);
-    //}
-    //else if (rpcTempCU->getWidth(0) == 32){
-    //    iBaseQP = iBaseQP - 1;
-    //}
 #endif
     iMinQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP - idQP);
     iMaxQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP + idQP);
@@ -719,7 +726,58 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           else if (rpcBestCU->getSlice()->getSliceType() == B_SLICE){
               printf("B%d ", rpcBestCU->getSlice()->getTLayer());
           }
-          printf("%f %f %f %f\n", ave_org, var_org, ave_var_org, var_var_org);
+          printf("%f %f %f %f", ave_org, var_org, ave_var_org, var_var_org);
+          TComMv neighborMv;
+          if (rpcBestCU->getSlice()->getSliceType() == B_SLICE){
+              //if ((rpcBestCU->getCtuLeft() != NULL) && (rpcBestCU->getCtuAbove() != NULL) && (rpcBestCU->getCtuAboveLeft() != NULL)){
+              //    neighborMv = rpcBestCU->getCtuLeft()->getCUMvField(RefPicList(0))->getMv(255);
+              //    printf(" %d %d ", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+
+              //    neighborMv = rpcBestCU->getCtuAbove()->getCUMvField(RefPicList(0))->getMv(255);
+              //    printf("%d %d ", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+
+              //    neighborMv = rpcBestCU->getCtuAboveLeft()->getCUMvField(RefPicList(0))->getMv(255);
+              //    printf("%d %d", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+              //}
+              //else{
+              //    printf(" 0 0 0 0 0 0");
+              //}
+              
+            UInt LeftPartIdx = MAX_UINT;
+            UInt AbovePartIdx = MAX_UINT;
+            UInt AboveLeftPartIdx = MAX_UINT;
+
+            const TComDataCU *pcCULeft = rpcBestCU->getPULeft(LeftPartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+            if (pcCULeft == NULL){
+                printf(" 0 0 ");
+            }
+            else{
+                neighborMv = pcCULeft->getCUMvField(RefPicList(0))->getMv(LeftPartIdx);
+                printf(" %d %d ", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+            }
+
+            const TComDataCU *pcCUAbove = rpcBestCU->getPUAbove(AbovePartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+            if (pcCUAbove == NULL){
+                printf(" 0 0 ");
+            }
+            else{
+                neighborMv = pcCUAbove->getCUMvField(RefPicList(0))->getMv(AbovePartIdx);
+                printf(" %d %d ", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+            }
+
+            const TComDataCU *pcCUAboveLeft = rpcBestCU->getPUAboveLeft(AboveLeftPartIdx, rpcBestCU->getZorderIdxInCtu() + 0);
+            if (pcCUAboveLeft == NULL){
+                printf(" 0 0 ");
+            }
+            else{
+                neighborMv = pcCUAboveLeft->getCUMvField(RefPicList(0))->getMv(AboveLeftPartIdx);
+                printf(" %d %d ", neighborMv.getAbsHor(), neighborMv.getAbsVer());
+            }              
+          }
+          else{
+              printf(" 0 0 0 0 0 0");
+          }
+          printf("\n");
       }
 #endif
     }
@@ -751,9 +809,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     idQP = 0;
 #else
     assert(idQP == 0);
-    if(rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
-        iBaseQP = iBaseQP - 2;
-    }
+    /*if(rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 0){
+        if (iBaseQP >= 32)
+        iBaseQP = iBaseQP - 1;
+        }*/
+    //if (rpcBestCU->getSlice()->getSliceType() == B_SLICE && rpcBestCU->getSlice()->getTLayer() == 3){
+    //    iBaseQP = iBaseQP - 1;
+    //}
 #endif
 #endif
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
