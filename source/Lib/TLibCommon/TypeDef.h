@@ -125,6 +125,7 @@
 #define W0038_DB_OPT                                      1 ///< adaptive DB parameter selection, LoopFilterOffsetInPPS and LoopFilterDisable are set to 0 and DeblockingFilterMetric=2;
 #define W0038_CQP_ADJ                                     1 ///< chroma QP adjustment based on TL, CQPTLAdjustEnabled is set to 1;
 
+#define LINE_BASED_INTRA_PREDICTION                       1 ///< line-based intra prediction (firstly try the solution 1: transform and quantization skipped for horizontal and vertical directions)
 // ====================================================================================================================
 // Derived macros
 // ====================================================================================================================
