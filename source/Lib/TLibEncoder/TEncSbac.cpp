@@ -1265,8 +1265,12 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
     Int transformSkip = pcCU->getTransformSkip( uiAbsPartIdx,compID) ? 1 : 0;
     Bool rdpcm_lossy = ( transformSkip && isIntra && ( (uiIntraMode == HOR_IDX) || (uiIntraMode == VER_IDX) ) ) && pcCU->isRDPCMEnabled(uiAbsPartIdx);
-
+#if LINE_BASED_INTRA_PREDICTION
+    Bool isLIPMode = (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiIntraMode == VER_IDX));
+    if ((pcCU->getCUTransquantBypass(uiAbsPartIdx)) || rdpcm_lossy || isLIPMode)
+#else
     if ( (pcCU->getCUTransquantBypass(uiAbsPartIdx)) || rdpcm_lossy )
+#endif
     {
       beValid = false;
       if ( (!pcCU->isIntra(uiAbsPartIdx)) && pcCU->isRDPCMEnabled(uiAbsPartIdx))

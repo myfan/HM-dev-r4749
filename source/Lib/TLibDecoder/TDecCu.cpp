@@ -134,6 +134,12 @@ Void TDecCu::destroy()
  */
 Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
 {
+#if 0
+    if ((pCtu->getCtuRsAddr() / pCtu->getPic()->getFrameWidthInCtus() == 6) && pCtu->getCtuRsAddr() % pCtu->getPic()->getFrameWidthInCtus() == 10)
+    {
+        printf("error!\n");
+    }
+#endif
   if ( pCtu->getSlice()->getPPS()->getUseDQP() )
   {
     setdQPFlag(true);

@@ -1495,7 +1495,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
     const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
     const UInt uiChFinalMode = ((chFmt == CHROMA_422) && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
-    if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && (uiChFinalMode == VER_IDX)))
+    if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiChFinalMode == VER_IDX)))
 #else
     if(pcCU->getCUTransquantBypass(uiAbsPartIdx))
 #endif
@@ -1609,7 +1609,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #endif
 
 #if LINE_BASED_INTRA_PREDICTION
-  const ChromaFormat chFmt = rTu.GetChromaFormat();;
+  const ChromaFormat chFmt = pcCU->getPic()->getPicYuvRec()->getChromaFormat();
   const ChannelType chType = toChannelType(compID);
   const UInt uiChPredMode = pcCU->getIntraDir(chType, uiAbsPartIdx);
   const TComSPS *sps = pcCU->getSlice()->getSPS();
@@ -1617,7 +1617,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
   const UInt uiChFinalMode = ((chFmt == CHROMA_422) && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
-  if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && (uiChFinalMode == VER_IDX)))
+  if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiChFinalMode == VER_IDX)))
 #else
   if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
 #endif

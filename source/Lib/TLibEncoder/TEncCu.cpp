@@ -234,7 +234,12 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
-
+#if 0
+  if ((pCtu->getCtuRsAddr() / pCtu->getPic()->getFrameWidthInCtus() == 6) && (pCtu->getCtuRsAddr() % pCtu->getPic()->getFrameWidthInCtus() == 10))
+  {
+      printf("error!\n");
+  }
+#endif
   xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
   DEBUG_STRING_OUTPUT(std::cout, sDebug)
 
@@ -1348,7 +1353,11 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
       return; // only check necessary 2Nx2N Intra in fast deltaqp mode
     }
   }
-
+#if 0
+  if ((rpcBestCU->getCUPelY() == 384) && (rpcBestCU->getCUPelX() == 672)){
+      printf("error!\n");
+  }
+#endif
   UInt uiDepth = rpcTempCU->getDepth( 0 );
 
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );

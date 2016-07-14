@@ -1294,7 +1294,23 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
 #endif
 
   Bool beValid;
+#if LINE_BASED_INTRA_PREDICTION
+  Int uiIntraMode = -1;
+  const Bool       bIsLuma = isLuma(compID);
+  Int isIntra = pcCU->isIntra(uiAbsPartIdx) ? 1 : 0;
+  if (isIntra)
+  {
+      uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
+
+      const UInt partsPerMinCU = 1 << (2 * (sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
+      uiIntraMode = (uiIntraMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;
+      uiIntraMode = ((rTu.GetChromaFormat() == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiIntraMode] : uiIntraMode;
+  }
+  Bool isLIPMode = (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiIntraMode == VER_IDX));
+  if ((pcCU->getCUTransquantBypass(uiAbsPartIdx)) || isLIPMode)
+#else
   if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
+#endif
   {
     beValid = false;
     if((!pcCU->isIntra(uiAbsPartIdx)) && pcCU->isRDPCMEnabled(uiAbsPartIdx))
@@ -1325,10 +1341,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       }
     }
   }
-
+#if !LINE_BASED_INTRA_PREDICTION
   Int uiIntraMode = -1;
   const Bool       bIsLuma = isLuma(compID);
   Int isIntra = pcCU->isIntra(uiAbsPartIdx) ? 1 : 0;
+#endif
   if ( isIntra && pcCU->isRDPCMEnabled(uiAbsPartIdx) )
   {
     const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
