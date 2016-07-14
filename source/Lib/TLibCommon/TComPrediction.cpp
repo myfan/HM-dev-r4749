@@ -520,29 +520,33 @@ Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, P
     //}
     //else // VER_IDX
     //{
-    //    // top row filled with reference samples
-    //    // remaining rows filled with piOrd data (if available)
-    //    for (Int x = 0; x < iWidth; x++)
-    //    {
-    //        piPred[x] = ptrSrc[x + 1];
-    //    }
-    //    if (piOrg != 0)
-    //    {
-    //        piPred += uiStride; // miss off the first row
-    //        for (Int y = 1; y < iHeight; y++, piPred += uiStride, piOrg += uiOrgStride)
-    //        {
-    //            memcpy(piPred, piOrg, iWidth*sizeof(Pel));
-    //        }
-    //    }
+        // top row filled with reference samples
+        // remaining rows filled with piOrd data (if available)
+        for (Int x = 0; x < iWidth; x++)
+        {
+            piPred[x] = ptrSrc[x + 1];
+        }
+
+        if (piOrg != 0) // for encoder
+        {
+            piPred += uiStride; // miss off the first row
+            for (Int y = 1; y < iHeight; y++, piPred += uiStride, piOrg += uiOrgStride)
+            {
+                memcpy(piPred, piOrg, iWidth*sizeof(Pel));
+            }
+        }
+        else{ // for decoder
+            assert(piResi != 0);
+            piPred += uiStride; // miss off the first row
+            for (Int y = 1; y < iHeight; y++, piPred += uiStride, piResi += uiStride){
+                for (Int x = 0; x < iWidth; x++){
+                    piPred[x] = piPred[x - uiStride] + piResi[x]; // piPred[y][x] = piPred[y-1][x] + piResi[y-1][x] (= piOrg[y-1][x])
+                }                                                 // Owing to the previous predicted samples will be used in the next row or column,
+            }                                                     // the filter for the prediction block must be disabled for the matching of encoder and decoder.
+        }                                                         // The filter can be applied after the prediction of each row or column.
     //}
 
-    for (Int y = 0; y < iHeight; y++){
-        for (Int x = 0; x < iWidth; x++){
-            pDst[y*uiStride + x] = ptrSrc[x + 1];
-        }
-    }
-
-    if (edgeFilter)
+    if (edgeFilter & 0)
     {
         for (Int y = 0; y < iHeight; y++)
         {

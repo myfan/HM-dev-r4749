@@ -1353,8 +1353,8 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
       return; // only check necessary 2Nx2N Intra in fast deltaqp mode
     }
   }
-#if 0
-  if ((rpcBestCU->getCUPelY() == 384) && (rpcBestCU->getCUPelX() == 672)){
+#if 1
+  if ((rpcBestCU->getCUPelY() == 40) && (rpcBestCU->getCUPelX() == 16)){
       printf("error!\n");
   }
 #endif

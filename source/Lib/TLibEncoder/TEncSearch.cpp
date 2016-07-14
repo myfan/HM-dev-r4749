@@ -2280,13 +2280,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 #if LINE_BASED_INTRA_PREDICTION
-        const Bool bIsLuma = isLuma(COMPONENT_Y);
-        const UInt uiChPredMode = pcCU->getIntraDir(toChannelType(COMPONENT_Y), uiAbsPartIdx);
-        const UInt partsPerMinCU = 1 << (2 * (sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
-        const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-        const UInt uiChFinalMode = ((chFmt == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-
-        if (!isChroma(COMPONENT_Y) && (uiChFinalMode == VER_IDX)){
+        if (!isChroma(COMPONENT_Y) && (modeIdx == VER_IDX)){
             predIntraAngLIP(COMPONENT_Y, uiMode, piOrg, uiStride, 0, piPred, uiStride, tuRecurseWithPU);
         }
         else
