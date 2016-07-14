@@ -522,20 +522,6 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   DEBUG_STRING_NEW(sTemp)
   m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  DEBUG_STRING_PASS_INTO(sTemp) );
 
-
-  //===== get prediction signal =====
-#if LINE_BASED_INTRA_PREDICTION
-  if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
-      m_pcPrediction->predIntraAngLIP( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu);
-  }
-  else
-#endif
-  m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
-
-#if DEBUG_STRING
-  ss << sTemp;
-#endif
-
   //===== inverse transform =====
   Pel*      piResi            = pcResiYuv->getAddr( compID, uiAbsPartIdx );
   TCoeff*   pcCoeff           = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
@@ -563,6 +549,19 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
       }
     }
   }
+
+  //===== get prediction signal =====
+#if LINE_BASED_INTRA_PREDICTION
+  if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
+      m_pcPrediction->predIntraAngLIP( compID, uiChFinalMode, 0, 0, piResi, piPred, uiStride, rTu);
+  }
+  else
+#endif
+  m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
+
+#if DEBUG_STRING
+  ss << sTemp;
+#endif
 
 #if DEBUG_STRING
   if (psDebug)

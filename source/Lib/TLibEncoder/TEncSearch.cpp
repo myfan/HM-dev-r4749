@@ -1182,7 +1182,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     //===== get prediction signal =====
 #if LINE_BASED_INTRA_PREDICTION
     if (!isChroma(compID) && (uiChFinalMode == VER_IDX)){
-        predIntraAngLIP(compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu);
+        predIntraAngLIP(compID, uiChFinalMode, piOrg, uiStride, 0, piPred, uiStride, rTu);
     }
     else
 #endif
@@ -2287,7 +2287,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         const UInt uiChFinalMode = ((chFmt == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
         if (!isChroma(COMPONENT_Y) && (uiChFinalMode == VER_IDX)){
-            predIntraAngLIP(COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU);
+            predIntraAngLIP(COMPONENT_Y, uiMode, piOrg, uiStride, 0, piPred, uiStride, tuRecurseWithPU);
         }
         else
 #endif

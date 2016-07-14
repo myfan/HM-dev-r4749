@@ -473,7 +473,8 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 }
 
 #if LINE_BASED_INTRA_PREDICTION
-Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, Pel* piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu)
+Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, Pel* piOrg /* Will be null for decoding */, UInt uiOrgStride,
+                                     Pel* piResi /* Will be null for encoding */, Pel* piPred, UInt uiStride, TComTU &rTu)
 {
     const ChannelType    channelType = toChannelType(compID);
     const TComRectangle &rect = rTu.getRect(isLuma(compID) ? COMPONENT_Y : COMPONENT_Cb);
