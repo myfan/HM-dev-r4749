@@ -522,20 +522,32 @@ Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, P
     //{
         // top row filled with reference samples
         // remaining rows filled with piOrd data (if available)
-        for (Int x = 0; x < iWidth; x++)
-        {
-            piPred[x] = ptrSrc[x + 1];
-        }
-
         if (piOrg != 0) // for encoder
         {
-            piPred += uiStride; // miss off the first row
-            for (Int y = 1; y < iHeight; y++, piPred += uiStride, piOrg += uiOrgStride)
+            Pel *Resi = new Pel[iWidth];
+            for (Int x = 0; x < iWidth; x++)
             {
-                memcpy(piPred, piOrg, iWidth*sizeof(Pel));
+                piPred[x] = ptrSrc[x + 1];
+                Resi[x] = piOrg[x] - piPred[x];
             }
+            piPred += uiStride; // miss off the first row
+            for (Int y = 1; y < iHeight; y++)
+            {
+                for (Int x = 0; x < iWidth; x++){
+                    piPred[x] = piPred[x - uiStride] + Resi[x];
+                    Resi[x] = piOrg[x + uiOrgStride] - piPred[x];
+                    assert(piPred[x] == piOrg[x]);
+                }
+                piPred += uiStride;
+                piOrg += uiOrgStride;
+            }
+            delete[] Resi;
         }
         else{ // for decoder
+            for (Int x = 0; x < iWidth; x++)
+            {
+                piPred[x] = ptrSrc[x + 1];
+            }
             assert(piResi != 0);
             piPred += uiStride; // miss off the first row
             for (Int y = 1; y < iHeight; y++, piPred += uiStride, piResi += uiStride){
