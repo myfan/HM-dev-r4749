@@ -323,36 +323,6 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 
     if (intraPredAngle == 0)  // pure vertical or pure horizontal
     {
-#if LINE_BASED_INTRA_PREDICTION
-        if (dirMode == VER_IDX){
-            for (Int y = 0; y < height; y++)
-            {
-                for (Int x = 0; x < width; x++)
-                {
-                    pDst[y*dstStride + x] = refMain[x + 1];
-                }
-                // line transform
-                
-                // line quantization
-
-                // inverse quantization
-                
-                // inverse line transform
-
-                // 
-
-            }
-        }
-        else{ // the prediction block needs to be flipped in the end
-            for (Int y = 0; y < height; y++)
-            {
-                for (Int x = 0; x < width; x++)
-                {
-                    pDst[y*dstStride + x] = refMain[x + 1];
-                }
-            }
-        }
-#else
       for (Int y=0;y<height;y++)
       {
         for (Int x=0;x<width;x++)
@@ -360,7 +330,6 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           pDst[y*dstStride+x] = refMain[x+1];
         }
       }
-#endif
 
       if (edgeFilter)
       {
