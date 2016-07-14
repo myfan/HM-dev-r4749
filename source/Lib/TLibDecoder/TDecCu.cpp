@@ -524,7 +524,12 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   //===== get prediction signal =====
-
+#if LINE_BASED_INTRA_PREDICTION
+  if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
+      m_pcPrediction->predIntraAngLIP( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu);
+  }
+  else
+#endif
   m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
 
 #if DEBUG_STRING

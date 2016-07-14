@@ -503,6 +503,85 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 }
 
+#if LINE_BASED_INTRA_PREDICTION
+Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, Pel* piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu)
+{
+    const ChannelType    channelType = toChannelType(compID);
+    const TComRectangle &rect = rTu.getRect(isLuma(compID) ? COMPONENT_Y : COMPONENT_Cb);
+    const Int            iWidth = rect.width;
+    const Int            iHeight = rect.height;
+
+    assert(g_aucConvertToBit[iWidth] >= 0); //   4x  4
+    assert(g_aucConvertToBit[iWidth] <= 5); // 128x128
+    //assert( iWidth == iHeight  );
+
+    const Int bitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
+    Pel *pDst = piPred;
+
+    // get the edge filter flag
+    TComDataCU *const pcCU = rTu.getCU();
+    const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+    const Bool enableEdgeFilters = !(pcCU->isRDPCMEnabled(uiAbsPartIdx) && pcCU->getCUTransquantBypass(uiAbsPartIdx));
+    const Bool edgeFilter = enableEdgeFilters && isLuma(channelType) && (iWidth <= MAXIMUM_INTRA_FILTERED_WIDTH) && (iHeight <= MAXIMUM_INTRA_FILTERED_HEIGHT);
+
+    // get starting pixel in block
+    const Int sw = (2 * iWidth + 1);
+
+    const Pel *ptrSrc = getPredictorPtr(compID, false);
+    
+    // Sample Adaptive intra-Prediction (SAP)
+
+    //if (uiDirMode == HOR_IDX)
+    //{
+    //    // left column filled with reference samples
+    //    // remaining columns filled with piOrg data (if available).
+    //    for (Int y = 0; y < iHeight; y++)
+    //    {
+    //        piPred[y*uiStride + 0] = ptrSrc[(y + 1)*sw];
+    //    }
+    //    if (piOrg != 0)
+    //    {
+    //        piPred += 1; // miss off first column
+    //        for (Int y = 0; y < iHeight; y++, piPred += uiStride, piOrg += uiOrgStride)
+    //        {
+    //            memcpy(piPred, piOrg, (iWidth - 1)*sizeof(Pel));
+    //        }
+    //    }
+    //}
+    //else // VER_IDX
+    //{
+    //    // top row filled with reference samples
+    //    // remaining rows filled with piOrd data (if available)
+    //    for (Int x = 0; x < iWidth; x++)
+    //    {
+    //        piPred[x] = ptrSrc[x + 1];
+    //    }
+    //    if (piOrg != 0)
+    //    {
+    //        piPred += uiStride; // miss off the first row
+    //        for (Int y = 1; y < iHeight; y++, piPred += uiStride, piOrg += uiOrgStride)
+    //        {
+    //            memcpy(piPred, piOrg, iWidth*sizeof(Pel));
+    //        }
+    //    }
+    //}
+
+    for (Int y = 0; y < iHeight; y++){
+        for (Int x = 0; x < iWidth; x++){
+            pDst[y*uiStride + x] = ptrSrc[x + 1];
+        }
+    }
+
+    if (edgeFilter)
+    {
+        for (Int y = 0; y < iHeight; y++)
+        {
+            pDst[y*uiStride] = Clip3(0, ((1 << bitDepth) - 1), pDst[y*uiStride] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
+        }
+    }
+}
+#endif
+
 /** Check for identical motion in both motion vector direction of a bi-directional predicted CU
   * \returns true, if motion vectors and reference pictures match
  */
