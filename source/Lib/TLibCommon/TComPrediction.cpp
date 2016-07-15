@@ -525,65 +525,51 @@ Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, P
         if (piOrg != 0) // for encoder
         {
             Pel *Resi = new Pel[iWidth];
-            for (Int x = 0; x < iWidth; x++)
+            for (Int y = 0; y < iHeight; y++)
             {
-                piPred[x] = ptrSrc[x + 1];
-                Resi[x] = piOrg[x] - piPred[x];
-            }
-            if (edgeFilter)
-            {
-                piPred[0] = Clip3(0, ((1 << bitDepth) - 1), piPred[0] + ((ptrSrc[sw] - ptrSrc[0]) >> 1));
-                Resi[0] = piOrg[0] - piPred[0];
-            }
-            piPred += uiStride; // miss off the first row
-            for (Int y = 1; y < iHeight; y++)
-            {
-                for (Int x = 0; x < iWidth; x++){
-                    piPred[x] = piPred[x - uiStride] + Resi[x];
-                    Resi[x] = piOrg[x + uiOrgStride] - piPred[x];
-                    assert(piPred[x] == piOrg[x]);
+                if (y == 0){
+                    for (Int x = 0; x < iWidth; x++) // prediction
+                    {
+                        piPred[y * uiStride + x] = ptrSrc[x + 1];
+                        Resi[x] = piOrg[y * uiOrgStride + x] - piPred[y * uiStride + x];
+                    }
                 }
-                if (edgeFilter)
+                else{
+                    for (Int x = 0; x < iWidth; x++){
+                        piPred[y * uiStride + x] = piPred[(y - 1) * uiStride + x] + Resi[x];
+                        Resi[x] = piOrg[y * uiOrgStride + x] - piPred[y * uiStride + x];
+                        assert(piPred[y * uiStride + x] == piOrg[(y - 1) * uiOrgStride + x]);
+                    }
+                }
+                if (edgeFilter) // filtering
                 {
-                    piPred[0] = Clip3(0, ((1 << bitDepth) - 1), piPred[0] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
-                    Resi[0] = piOrg[uiOrgStride] - piPred[0];
+                    piPred[y * uiStride] = Clip3(0, ((1 << bitDepth) - 1), piPred[y * uiStride] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
+                    Resi[0] = piOrg[y * uiOrgStride] - piPred[y * uiStride];
                 }
-
-                piPred += uiStride;
-                piOrg += uiOrgStride;
             }
             delete[] Resi;
         }
         else{ // for decoder
-            for (Int x = 0; x < iWidth; x++)
-            {
-                piPred[x] = ptrSrc[x + 1];
-            }
-            if (edgeFilter)
-            {
-                piPred[0] = Clip3(0, ((1 << bitDepth) - 1), piPred[0] + ((ptrSrc[sw] - ptrSrc[0]) >> 1));
-            }
             assert(piResi != 0);
-            piPred += uiStride; // miss off the first row
-            for (Int y = 1; y < iHeight; y++, piPred += uiStride, piResi += uiStride){
-                for (Int x = 0; x < iWidth; x++){
-                    piPred[x] = piPred[x - uiStride] + piResi[x]; // piPred[y][x] = piPred[y-1][x] + piResi[y-1][x] (= piOrg[y-1][x])
-                }                                                 // Owing to the previous predicted samples will be used in the next row or column,
+            for (Int y = 0; y < iHeight; y++){
+                if (y == 0){
+                    for (Int x = 0; x < iWidth; x++)
+                    {
+                        piPred[x] = ptrSrc[x + 1];
+                    }
+                }
+                else{
+                    for (Int x = 0; x < iWidth; x++){
+                        piPred[y * uiStride + x] = piPred[(y - 1) * uiStride + x] + piResi[(y - 1) * uiStride + x]; // piPred[y][x] = piPred[y-1][x] + piResi[y-1][x] (= piOrg[y-1][x])
+                    }
+                }
                 if (edgeFilter)
                 {
-                    piPred[0] = Clip3(0, ((1 << bitDepth) - 1), piPred[0] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
-                }
-            }                                                     // the filter for the prediction block must be disabled for the matching of encoder and decoder.
-        }                                                         // The filter can be applied after the prediction of each row or column.
+                    piPred[y * uiStride] = Clip3(0, ((1 << bitDepth) - 1), piPred[y * uiStride] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
+                }   // Owing to the previous predicted samples will be used in the next row or column,
+            }       // the filter for the prediction block must be disabled for the matching of encoder and decoder.
+        }           // The filter can be applied after the prediction of each row or column.
     //}
-
-    if (edgeFilter & 0)
-    {
-        for (Int y = 0; y < iHeight; y++)
-        {
-            pDst[y*uiStride] = Clip3(0, ((1 << bitDepth) - 1), pDst[y*uiStride] + ((ptrSrc[(y + 1)*sw] - ptrSrc[0]) >> 1));
-        }
-    }
 }
 #endif
 
