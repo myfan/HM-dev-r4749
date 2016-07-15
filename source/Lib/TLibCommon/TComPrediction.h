@@ -116,7 +116,7 @@ public:
   // Angular Intra
   Void predIntraAng               ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM = false );
 #if LINE_BASED_INTRA_PREDICTION
-  Void predIntraAngLIP            ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piResi /* Will be null for encoding */, Pel* piPred, UInt uiStride, TComTU &rTu);
+  Void predIntraAngLIP            ( const ComponentID compID, UInt uiDirMode, UInt uiLineNum, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piResi /* Will be null for encoding */, Pel* piPred, UInt uiStride, TComTU &rTu);
 #endif
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);
 

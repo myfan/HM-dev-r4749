@@ -1182,7 +1182,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     //===== get prediction signal =====
 #if LINE_BASED_INTRA_PREDICTION
     if (!isChroma(compID) && (uiChFinalMode == VER_IDX)){
-        predIntraAngLIP(compID, uiChFinalMode, piOrg, uiStride, 0, piPred, uiStride, rTu);
+        Pel *Resi = new Pel[uiWidth];
+        for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
+            predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
+        }
+        delete[] Resi;
     }
     else
 #endif
@@ -2281,7 +2285,14 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 #if LINE_BASED_INTRA_PREDICTION
         if (!isChroma(COMPONENT_Y) && (modeIdx == VER_IDX)){
-            predIntraAngLIP(COMPONENT_Y, uiMode, piOrg, uiStride, 0, piPred, uiStride, tuRecurseWithPU);
+            const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
+            const Int iHeight = rect.height;
+            const Int iWidth = rect.width;
+            Pel *Resi = new Pel[iWidth];
+            for (Int uiLineNum = 0; uiLineNum < iHeight; uiLineNum++){
+                predIntraAngLIP(COMPONENT_Y, uiMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, tuRecurseWithPU);
+            }
+            delete[] Resi;
         }
         else
 #endif
