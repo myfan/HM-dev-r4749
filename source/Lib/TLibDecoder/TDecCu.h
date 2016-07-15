@@ -99,6 +99,9 @@ protected:
 
   Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth );
   Void xIntraRecBlk             ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );
+#if LINE_BASED_INTRA_PREDICTION
+  Void xIntraRecBlkLIP          ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );
+#endif
   Void xIntraRecQT              ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ChannelType chType, TComTU &rTu );
 
   Void xReconPCM                ( TComDataCU* pcCU, UInt uiDepth );

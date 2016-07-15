@@ -551,16 +551,6 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 
   //===== get prediction signal =====
-#if LINE_BASED_INTRA_PREDICTION
-  if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
-      //TCoeff *pcCoeff = new TCoeff[uiWidth];
-      for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
-          //m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
-          m_pcPrediction->predIntraAngLIP(compID, uiChFinalMode, uiLineNum, 0, 0, piResi, piPred, uiStride, rTu);
-      }
-  }
-  else
-#endif
   m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
 
 #if DEBUG_STRING
@@ -666,6 +656,206 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 }
 
+#if LINE_BASED_INTRA_PREDICTION
+Void
+TDecCu::xIntraRecBlkLIP(    TComYuv*    pcRecoYuv,
+                            TComYuv*    pcPredYuv,
+                            TComYuv*    pcResiYuv,
+                      const ComponentID compID,
+                            TComTU     &rTu)
+{
+  if (!rTu.ProcessComponentSection(compID))
+  {
+    return;
+  }
+  const Bool       bIsLuma = isLuma(compID);
+
+
+  TComDataCU *pcCU = rTu.getCU();
+  const TComSPS &sps=*(pcCU->getSlice()->getSPS());
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
+
+  const TComRectangle &tuRect  =rTu.getRect(compID);
+  const UInt uiWidth           = tuRect.width;
+  const UInt uiHeight          = tuRect.height;
+  const UInt uiStride          = pcRecoYuv->getStride (compID);
+        Pel* piPred            = pcPredYuv->getAddr( compID, uiAbsPartIdx );
+  const ChromaFormat chFmt     = rTu.GetChromaFormat();
+
+  if (uiWidth != uiHeight)
+  {
+    //------------------------------------------------
+
+    //split at current level if dividing into square sub-TUs
+
+    TComTURecurse subTURecurse(rTu, false, TComTU::VERTICAL_SPLIT, true, compID);
+
+    //recurse further
+    do
+    {
+      xIntraRecBlkLIP(pcRecoYuv, pcPredYuv, pcResiYuv, compID, subTURecurse);
+    } while (subTURecurse.nextSection(rTu));
+
+    //------------------------------------------------
+
+    return;
+  }
+
+  const UInt uiChPredMode  = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
+  const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
+  const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+  const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
+
+  //===== init availability pattern =====
+  const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+
+#if DEBUG_STRING
+  std::ostream &ss(std::cout);
+#endif
+
+  DEBUG_STRING_NEW(sTemp)
+  m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  DEBUG_STRING_PASS_INTO(sTemp) );
+
+  //===== inverse transform =====
+  Pel*      piResi            = pcResiYuv->getAddr( compID, uiAbsPartIdx );
+  TCoeff*   pcCoeff           = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
+
+  const QpParam cQP(*pcCU, compID);
+
+
+  DEBUG_STRING_NEW(sDebug);
+#if DEBUG_STRING
+  const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTRA);
+  std::string *psDebug=(DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) ? &sDebug : 0;
+#endif
+
+  if (pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0)
+  {
+    m_pcTrQuant->invTransformNxN( rTu, compID, piResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );
+  }
+  else
+  {
+    for (UInt y = 0; y < uiHeight; y++)
+    {
+      for (UInt x = 0; x < uiWidth; x++)
+      {
+        piResi[(y * uiStride) + x] = 0;
+      }
+    }
+  }
+
+  //===== get prediction signal =====
+  if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
+      //TCoeff *pcCoeff = new TCoeff[uiWidth];
+      for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
+          //m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
+          m_pcPrediction->predIntraAngLIP(compID, uiChFinalMode, uiLineNum, 0, 0, piResi, piPred, uiStride, rTu);
+      }
+  }
+
+#if DEBUG_STRING
+  ss << sTemp;
+#endif
+
+#if DEBUG_STRING
+  if (psDebug)
+  {
+    ss << (*psDebug);
+  }
+#endif
+
+  //===== reconstruction =====
+  const UInt uiRecIPredStride  = pcCU->getPic()->getPicYuvRec()->getStride(compID);
+
+  const Bool useCrossComponentPrediction = isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(uiAbsPartIdx, compID) != 0);
+  const Pel* pResiLuma  = pcResiYuv->getAddr( COMPONENT_Y, uiAbsPartIdx );
+  const Int  strideLuma = pcResiYuv->getStride( COMPONENT_Y );
+
+        Pel* pPred      = piPred;
+        Pel* pResi      = piResi;
+        Pel* pReco      = pcRecoYuv->getAddr( compID, uiAbsPartIdx );
+        Pel* pRecIPred  = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx );
+
+
+#if DEBUG_STRING
+  const Bool bDebugPred=((DebugOptionList::DebugString_Pred.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+  const Bool bDebugResi=((DebugOptionList::DebugString_Resi.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+  const Bool bDebugReco=((DebugOptionList::DebugString_Reco.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+  if (bDebugPred || bDebugResi || bDebugReco)
+  {
+    ss << "###: " << "CompID: " << compID << " pred mode (ch/fin): " << uiChPredMode << "/" << uiChFinalMode << " absPartIdx: " << rTu.GetAbsPartIdxTU() << std::endl;
+  }
+#endif
+
+  const Int clipbd = sps.getBitDepth(toChannelType(compID));
+#if O0043_BEST_EFFORT_DECODING
+  const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
+#endif
+
+  if( useCrossComponentPrediction )
+  {
+    TComTrQuant::crossComponentPrediction( rTu, compID, pResiLuma, piResi, piResi, uiWidth, uiHeight, strideLuma, uiStride, uiStride, true );
+  }
+
+  for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+  {
+#if DEBUG_STRING
+    if (bDebugPred || bDebugResi || bDebugReco)
+    {
+      ss << "###: ";
+    }
+
+    if (bDebugPred)
+    {
+      ss << " - pred: ";
+      for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+      {
+        ss << pPred[ uiX ] << ", ";
+      }
+    }
+    if (bDebugResi)
+    {
+      ss << " - resi: ";
+    }
+#endif
+
+    for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+    {
+#if DEBUG_STRING
+      if (bDebugResi)
+      {
+        ss << pResi[ uiX ] << ", ";
+      }
+#endif
+#if O0043_BEST_EFFORT_DECODING
+      pReco    [ uiX ] = ClipBD( rightShiftEvenRounding<Pel>(pPred[ uiX ] + pResi[ uiX ], bitDepthDelta), clipbd );
+#else
+      pReco    [ uiX ] = ClipBD( pPred[ uiX ] + pResi[ uiX ], clipbd );
+#endif
+      pRecIPred[ uiX ] = pReco[ uiX ];
+    }
+#if DEBUG_STRING
+    if (bDebugReco)
+    {
+      ss << " - reco: ";
+      for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+      {
+        ss << pReco[ uiX ] << ", ";
+      }
+    }
+
+    if (bDebugPred || bDebugResi || bDebugReco)
+    {
+      ss << "\n";
+    }
+#endif
+    pPred     += uiStride;
+    pResi     += uiStride;
+    pReco     += uiStride;
+    pRecIPred += uiRecIPredStride;
+  }
+}
+#endif
 
 Void
 TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth )
@@ -717,8 +907,21 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
   if( uiTrMode == uiTrDepth )
   {
+#if LINE_BASED_INTRA_PREDICTION
+    const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+    const ChromaFormat chFmt = rTu.GetChromaFormat();
+#endif
     if (isLuma(chType))
     {
+#if LINE_BASED_INTRA_PREDICTION
+      const UInt uiChPredMode = pcCU->getIntraDir(toChannelType(COMPONENT_Y), uiAbsPartIdx);
+      const UInt partsPerMinCU = 1 << (2 * (sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
+      const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !isLuma(chType)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+      const UInt uiChFinalMode = ((chFmt == CHROMA_422) && !isLuma(chType)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
+      if (uiChFinalMode == VER_IDX)
+        xIntraRecBlkLIP(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu);
+      else
+#endif
       xIntraRecBlk( pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y,  rTu );
     }
     else

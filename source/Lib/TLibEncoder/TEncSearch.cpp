@@ -1180,23 +1180,6 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 
     //===== get prediction signal =====
-#if LINE_BASED_INTRA_PREDICTION
-    if (!isChroma(compID) && (uiChFinalMode == VER_IDX)){
-        Pel *Resi = new Pel[uiWidth];
-        TCoeff *pcCoeff = new TCoeff[uiWidth];
-        const QpParam cQP(*pcCU, COMPONENT_Y);
-        for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
-            predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
-            for (Int x = 0; x < uiWidth; x++){
-                m_pcTrQuant->transformSkipQuantOneSample(rTu, COMPONENT_Y, Resi[x], pcCoeff, x, cQP, 1);
-                m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
-            }
-        }
-        delete[] Resi;
-        delete[] pcCoeff;
-    }
-    else
-#endif
     predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );
 
     // save prediction
