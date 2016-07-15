@@ -553,7 +553,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   //===== get prediction signal =====
 #if LINE_BASED_INTRA_PREDICTION
   if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
+      //TCoeff *pcCoeff = new TCoeff[uiWidth];
       for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
+          //m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
           m_pcPrediction->predIntraAngLIP(compID, uiChFinalMode, uiLineNum, 0, 0, piResi, piPred, uiStride, rTu);
       }
   }

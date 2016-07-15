@@ -249,6 +249,18 @@ protected:
                                          ,Int           default0Save1Load2 = 0
                                    );
 
+  Void  xIntraCodingTUBlockLIP    (       TComYuv*      pcOrgYuv,
+                                          TComYuv*      pcPredYuv,
+                                          TComYuv*      pcResiYuv,
+                                          Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+                                    const Bool          checkCrossCPrediction,
+                                          Distortion&   ruiDist,
+                                    const ComponentID   compID,
+                                          TComTU        &rTu
+                                    DEBUG_STRING_FN_DECLARE(sTest)
+                                         ,Int           default0Save1Load2 = 0
+                                   );
+
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,

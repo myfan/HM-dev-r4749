@@ -514,7 +514,7 @@ Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, U
             for (Int x = 0; x < iWidth; x++){
                 piPred[uiLineNum * uiStride + x] = piPred[(uiLineNum - 1) * uiStride + x] + piResi[x];
                 piResi[x] = piOrg[uiLineNum * uiOrgStride + x] - piPred[uiLineNum * uiStride + x];
-                assert(piPred[uiLineNum * uiStride + x] == piOrg[(uiLineNum - 1) * uiOrgStride + x]);
+                //assert(piPred[uiLineNum * uiStride + x] == piOrg[(uiLineNum - 1) * uiOrgStride + x]);
             }
         }
         if (edgeFilter) // filtering
