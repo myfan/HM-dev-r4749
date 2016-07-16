@@ -1354,7 +1354,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     }
   }
 #if 1
-  if ((rpcBestCU->getCUPelY() == 40) && (rpcBestCU->getCUPelX() == 16)){
+  if ((rpcBestCU->getCUPelY() == 8) && (rpcBestCU->getCUPelX() == 48)){
       printf("error!\n");
   }
 #endif

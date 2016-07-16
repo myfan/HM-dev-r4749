@@ -744,6 +744,15 @@ TDecCu::xIntraRecBlkLIP(    TComYuv*    pcRecoYuv,
     }
   }
 
+#if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
+  for (Int y = 0; y < uiHeight; y++){
+      for (Int x = 0; x < uiWidth; x++){
+          m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[y * uiWidth + x], piResi[y * uiStride + x], cQP, y * uiWidth + x);
+          //printf("%d ", piResi[y * uiStride + x]);
+      }
+  }
+#endif
+
   //===== get prediction signal =====
   if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
       //TCoeff *pcCoeff = new TCoeff[uiWidth];

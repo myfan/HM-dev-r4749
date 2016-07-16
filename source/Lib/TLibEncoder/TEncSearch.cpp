@@ -1460,14 +1460,14 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;
   const Bool           bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();
         Pel *const     lumaResidualForEstimate              = bUseReconstructedResidualForEstimate ? reconstructedLumaResidual : encoderLumaResidual;
-
+        TCoeff *pcQuantResi = new TCoeff[uiHeight * uiStride];
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTRA);
 #endif
 
   //===== init availability pattern =====
   DEBUG_STRING_NEW(sTemp)
-
+  
 #if !DEBUG_STRING
   if( default0Save1Load2 != 2 )
 #endif
@@ -1479,17 +1479,21 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
     //===== get prediction signal =====
     {
         Pel *Resi = new Pel[uiWidth];
-        //TCoeff *pcCoeff = new TCoeff[uiWidth];
+        TCoeff *pCoeff = pcQuantResi;
         const QpParam cQP(*pcCU, COMPONENT_Y);
+        //printf("\n===============\n");
         for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
             predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
-            //for (Int x = 0; x < uiWidth; x++){
-            //    m_pcTrQuant->transformSkipQuantOneSample(rTu, COMPONENT_Y, Resi[x], pcCoeff, x, cQP, 1);
-            //    m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
-            //}
+            for (Int x = 0; x < uiWidth; x++){
+                //printf(" (%d ", Resi[x]);
+                m_pcTrQuant->transformSkipQuantOneSample(rTu, COMPONENT_Y, Resi[x], pCoeff, x, cQP, 1);
+                //printf("%d ", pcQuantResi[x]);
+                m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pCoeff[x], Resi[x], cQP, x);
+                //printf("%d)", Resi[x]);
+            }
+            pCoeff += uiStride;
         }
         delete[] Resi;
-        //delete[] pcCoeff;
     }
 
     // save prediction
@@ -1526,23 +1530,21 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   }
 #endif
 
-  //===== get residual signal =====
+  //===== get residual signal after line transform and quantization =====
   {
     // get residual
-    Pel*  pOrg    = piOrg;
-    Pel*  pPred   = piPred;
-    Pel*  pResi   = piResi;
+    TCoeff*  pQuatResi = pcQuantResi;
+    Pel*  pResi     = piResi;
 
     for( UInt uiY = 0; uiY < uiHeight; uiY++ )
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
-        pResi[ uiX ] = pOrg[ uiX ] - pPred[ uiX ];
+        pResi[uiX] = (Pel)pQuatResi[uiX];
       }
 
-      pOrg  += uiStride;
       pResi += uiStride;
-      pPred += uiStride;
+      pQuatResi += uiStride;
     }
   }
 
@@ -1590,7 +1592,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
     );
 
   //--- inverse transform ---
-
 #if DEBUG_STRING
   if ( (uiAbsSum > 0) || (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) )
 #else
@@ -1609,7 +1610,14 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
       pResi += uiStride;
     }
   }
-
+#if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
+  for (Int y = 0; y < uiHeight; y++){
+      for (Int x = 0; x < uiWidth; x++){
+          m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[y * uiWidth + x], piResi[y * uiStride + x], cQP, y * uiWidth + x);
+          //printf("%d ", piResi[y * uiStride + x]);
+      }
+  }
+#endif
 
   //===== reconstruction =====
   {
@@ -1705,6 +1713,8 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
+
+  delete[] pcQuantResi;
 }
 #endif
 
@@ -2615,20 +2625,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             const Int iHeight = rect.height;
             const Int iWidth = rect.width;
             Pel *Resi = new Pel[iWidth];
-            //TCoeff *pcCoeff = new TCoeff[iWidth];
-            //const QpParam cQP(*pcCU, COMPONENT_Y);
+            TCoeff *pcCoeff = new TCoeff[iWidth];
+            const QpParam cQP(*pcCU, COMPONENT_Y);
             for (Int uiLineNum = 0; uiLineNum < iHeight; uiLineNum++){
                 predIntraAngLIP(COMPONENT_Y, uiMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, tuRecurseWithPU);
-                //for (Int x = 0; x < iWidth; x++){
-                //    printf("\n%d ", Resi[x]);
-                //    m_pcTrQuant->transformSkipQuantOneSample(tuRecurseWithPU, COMPONENT_Y, Resi[x], pcCoeff, x, cQP, 1);
-                //    printf("%d ", pcCoeff[x]);
-                //    m_pcTrQuant->invTrSkipDeQuantOneSample(tuRecurseWithPU, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
-                //    printf("%d ", Resi[x]);
-                //}
+                for (Int x = 0; x < iWidth; x++){
+                    m_pcTrQuant->transformSkipQuantOneSample(tuRecurseWithPU, COMPONENT_Y, Resi[x], pcCoeff, x, cQP, 1);
+                    m_pcTrQuant->invTrSkipDeQuantOneSample(tuRecurseWithPU, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
+                }
             }
             delete[] Resi;
-            //delete[] pcCoeff;
+            delete[] pcCoeff;
         }
         else
 #endif
