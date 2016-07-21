@@ -137,6 +137,23 @@ public:
                        const QpParam      & cQP
                              DEBUG_STRING_FN_DECLAREP(psDebug));
 
+#if LINE_BASED_INTRA_PREDICTION
+    Void LIPtransformNxN(       TComTU     & rTu,
+                     const ComponentID     compID,
+                           Pel           * pcResidual,
+                           TCoeff        * rpcCoeff,
+                           //TCoeff         & uiAbsSum,
+                     const QpParam        & cQP
+                    );
+
+    Void invLIPTransformNxN(TComTU        & rTu,
+                       const ComponentID    compID,
+                             Pel         *pcResidual,
+                             TCoeff      *  pcCoeff,
+                       const QpParam      & cQP
+                             DEBUG_STRING_FN_DECLAREP(psDebug));
+#endif
+
   Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu );
 
   Void rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, RDPCMMode& rdpcmMode );
@@ -201,8 +218,8 @@ public:
   Void invTrSkipDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos );
 
 #if LINE_BASED_INTRA_PREDICTION
-  Void LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
-  Void LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos);
+  Void LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff pcCoeff, TCoeff* rpcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
+  Void LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, TCoeff* rpcCoeff, const QpParam &cQP, UInt uiPos);
 #endif
 
 protected:

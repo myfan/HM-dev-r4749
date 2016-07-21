@@ -388,7 +388,9 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
 *  \param uiTrSize transform size (uiTrSize x uiTrSize)
 *  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
 */
-Void xLIPTrHor(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, UInt uiRowNum, Bool useDST, const Int maxLog2TrDynamicRange)
+
+// the input residual only includes one row or one column
+Void xLIPTrHor(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
 {
     UInt i, k;
     TCoeff iSum;
@@ -428,13 +430,13 @@ Void xLIPTrHor(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTr
         iSum = 0;
         for (k = 0; k<uiTrSize; k++)
         {
-            iSum += iT[i*uiTrSize + k] * block[uiRowNum*uiStride + k];
+            iSum += iT[i*uiTrSize + k] * block[k];
         }
         coeff[i] = (iSum + add_1st) >> shift_1st;
     }
 }
 
-Void xLIPTrVer(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, UInt uiColNum, Bool useDST, const Int maxLog2TrDynamicRange)
+Void xLIPTrVer(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
 {
     UInt i, k;
     TCoeff iSum;
@@ -474,7 +476,7 @@ Void xLIPTrVer(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTr
         iSum = 0;
         for (k = 0; k < uiTrSize; k++)
         {
-            iSum += iT[i*uiTrSize + k] * block[k*uiStride + uiColNum];
+            iSum += iT[k*uiTrSize + i] * block[k];
         }
         coeff[i] = (iSum + add_1st) >> shift_1st;
     }
@@ -487,7 +489,7 @@ Void xLIPTrVer(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTr
 *  \param uiTrSize transform size (uiTrSize x uiTrSize)
 *  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
 */
-Void xLIPInvTrHor(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, UInt uiRowNum, Bool useDST, const Int maxLog2TrDynamicRange)
+Void xLIPInvTrHor(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
 {
     UInt j, k;
     TCoeff iSum;
@@ -516,7 +518,7 @@ Void xLIPInvTrHor(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt u
 
     const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
 
-    const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+    const Int shift_1st = maxLog2TrDynamicRange + TRANSFORM_MATRIX_SHIFT - bitDepth;
     const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
     const TCoeff clipMaximum = (1 << maxLog2TrDynamicRange) - 1;
     const Int add_1st = 1 << (shift_1st - 1);
@@ -527,14 +529,14 @@ Void xLIPInvTrHor(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt u
         iSum = 0;
         for (k = 0; k < uiTrSize; k++)
         {
-            iSum += iT[k*uiTrSize + j] * coeff[uiRowNum*uiTrSize + k];
+            iSum += iT[k*uiTrSize + j] * coeff[k];
         }
 
         block[j] = Clip3<TCoeff>(std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max(), (iSum + add_1st) >> shift_1st);
     }
 }
 
-Void xLIPInvTrVer(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, UInt uiColNum, Bool useDST, const Int maxLog2TrDynamicRange)
+Void xLIPInvTrVer(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
 {
     UInt j, k;
     TCoeff iSum;
@@ -563,13 +565,10 @@ Void xLIPInvTrVer(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt u
 
     const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
 
-    const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
-    const Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+    const Int shift_1st = maxLog2TrDynamicRange + TRANSFORM_MATRIX_SHIFT - bitDepth;
     const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
     const TCoeff clipMaximum = (1 << maxLog2TrDynamicRange) - 1;
-    assert(shift_2nd >= 0);
     const Int add_1st = 1 << (shift_1st - 1);
-    const Int add_2nd = (shift_2nd > 0) ? (1 << (shift_2nd - 1)) : 0;
 
     /* Vertical transform */
     for (j = 0; j < uiTrSize; j++)
@@ -577,11 +576,11 @@ Void xLIPInvTrVer(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt u
         iSum = 0;
         for (k = 0; k < uiTrSize; k++)
         {
-            iSum += iT[k*uiTrSize + uiColNum] * coeff[k*uiTrSize + uiColNum];
+            iSum += iT[j*uiTrSize + k] * coeff[k];
         }
 
         // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
-        block[j*uiTrSize + uiColNum] = Clip3<TCoeff>(clipMinimum, clipMaximum, (iSum + add_1st) >> shift_1st);
+        block[j] = Clip3<TCoeff>(clipMinimum, clipMaximum, (iSum + add_1st) >> shift_1st);
     }
 }
 #endif
@@ -1906,6 +1905,124 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
   invRdpcmNxN( rTu, compID, pcResidual, uiStride );
 }
+
+
+#if LINE_BASED_INTRA_PREDICTION
+
+Void TComTrQuant::LIPtransformNxN(TComTU   & rTu,
+    const ComponentID     compID,
+    Pel          *  pcResidual,
+    TCoeff       *  rpcCoeff,
+    //TCoeff        & uiAbsSum,
+    const QpParam       & cQP
+    )
+{
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt uiWidth = rect.width;
+    const UInt uiHeight = rect.height;
+    TComDataCU* pcCU = rTu.getCU();
+    const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+    const UInt uiOrgTrDepth = rTu.GetTransformDepthRel();
+    TCoeff *pTmpCoeff = new TCoeff[uiWidth];
+
+    //uiAbsSum = 0;
+    //transform and quantise
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to transform\n";
+    printBlock(pcResidual, uiWidth, 1, 0);
+#endif
+    assert((pcCU->getSlice()->getSPS()->getMaxTrSize() >= uiWidth));
+
+    const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+    xLIPTrHor(channelBitDepth, pcResidual, pTmpCoeff, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between transform and quantiser\n";
+    printBlock(pTmpCoeff, uiWidth, 1, uiWidth);
+#endif
+    // quantization
+    for (Int x = 0; x < uiWidth; x++){
+        LIPQuantOneSample(rTu, compID, pTmpCoeff[x], rpcCoeff, x, cQP, 1);
+    }
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
+    printBlock(rpcCoeff, uiWidth, 1, uiWidth);
+#endif
+    delete[] pTmpCoeff;
+}
+
+
+Void TComTrQuant::invLIPTransformNxN(TComTU        &rTu,
+    const ComponentID    compID,
+    Pel          *pcResidual,
+    TCoeff       * pcCoeff,
+    const QpParam       &cQP
+    DEBUG_STRING_FN_DECLAREP(psDebug))
+{
+    TComDataCU* pcCU = rTu.getCU();
+    const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt uiWidth = rect.width;
+    const UInt uiHeight = rect.height;
+    TCoeff *pTmpCoeff = new TCoeff[uiWidth];
+#if DEBUG_STRING
+    if (psDebug)
+    {
+        std::stringstream ss(stringstream::out);
+        printBlockToStream(ss, (compID == 0) ? "###InvTran ip Ch0: " : ((compID == 1) ? "###InvTran ip Ch1: " : "###InvTran ip Ch2: "), pcCoeff, uiWidth, uiHeight, uiWidth);
+        DEBUG_STRING_APPEND((*psDebug), ss.str())
+    }
+#endif
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to dequantiser\n";
+    printBlock(pcCoeff, uiWidth, 1, uiWidth);
+#endif
+    for (Int x = 0; x < uiWidth; x++){
+        LIPDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], pTmpCoeff, cQP, x);
+    }
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between dequantiser and inverse-transform\n";
+    printBlock(pTmpCoeff, uiWidth, 1, uiWidth);
+#endif
+
+#if DEBUG_STRING
+    if (psDebug)
+    {
+        std::stringstream ss(stringstream::out);
+        printBlockToStream(ss, "###InvTran deq: ", m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+        (*psDebug) += ss.str();
+    }
+#endif
+
+#if O0043_BEST_EFFORT_DECODING
+    const Int channelBitDepth = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID));
+#else
+    const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
+    xLIPInvTrHor(channelBitDepth, pTmpCoeff, pcResidual, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+
+#if DEBUG_STRING
+    if (psDebug)
+    {
+        std::stringstream ss(stringstream::out);
+        printBlockToStream(ss, "###InvTran resi: ", pcResidual, uiWidth, uiHeight, uiStride);
+        (*psDebug) += ss.str();
+        (*psDebug) += "(<- was a Transformed block)\n";
+    }
+#endif
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of inverse-transform\n";
+    printBlock(pcResidual, uiWidth, 1, 0);
+    g_debugCounter++;
+#endif
+    delete[] pTmpCoeff;
+}
+
+#endif
 
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
@@ -3770,7 +3887,7 @@ Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const
     pcCoeff[uiPos] = Clip3<TCoeff>(entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient);
 }
 
-Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff inSample, Pel &reconSample, const QpParam &cQP, UInt uiPos)
+Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff inSample, TCoeff* rpcCoeff, const QpParam &cQP, UInt uiPos)
 {
     TComDataCU    *pcCU = rTu.getCU();
     const UInt           uiAbsPartIdx = rTu.GetAbsPartIdxTU();
@@ -3854,7 +3971,7 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
             dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
         }
     }
-    reconSample = Pel(dequantisedSample);
+    rpcCoeff[uiPos] = Pel(dequantisedSample);
 
     //// Inverse transform-skip
 

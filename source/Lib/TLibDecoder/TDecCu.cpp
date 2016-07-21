@@ -746,10 +746,7 @@ TDecCu::xIntraRecBlkLIP(    TComYuv*    pcRecoYuv,
 
 #if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
   for (Int y = 0; y < uiHeight; y++){
-      for (Int x = 0; x < uiWidth; x++){
-          m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[y * uiWidth + x], piResi[y * uiStride + x], cQP, y * uiWidth + x);
-          //printf("%d ", piResi[y * uiStride + x]);
-      }
+      m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, piResi + y * uiStride, pcCoeff + y * uiWidth, cQP);
   }
 #endif
 
