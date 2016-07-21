@@ -379,6 +379,213 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
 #endif //MATRIX_MULT
 
 
+
+#if LINE_BASED_INTRA_PREDICTION
+/** NxN forward transform (2D) using brute force matrix multiplication (3 nested loops)
+*  \param block pointer to input data (residual)
+*  \param coeff pointer to output data (transform coefficients)
+*  \param uiStride stride of input data
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
+*/
+Void xLIPTrHor(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, UInt uiRowNum, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+    UInt i, k;
+    TCoeff iSum;
+    const TMatrixCoeff *iT;
+    UInt uiLog2TrSize = g_aucConvertToBit[uiTrSize] + 2;
+
+    if (uiTrSize == 4)
+    {
+        iT = (useDST ? g_as_DST_MAT_4[TRANSFORM_FORWARD][0] : g_aiT4[TRANSFORM_FORWARD][0]);
+    }
+    else if (uiTrSize == 8)
+    {
+        iT = g_aiT8[TRANSFORM_FORWARD][0];
+    }
+    else if (uiTrSize == 16)
+    {
+        iT = g_aiT16[TRANSFORM_FORWARD][0];
+    }
+    else if (uiTrSize == 32)
+    {
+        iT = g_aiT32[TRANSFORM_FORWARD][0];
+    }
+    else
+    {
+        assert(0);
+    }
+
+    const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
+    const Int shift_1st = (uiLog2TrSize + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+    const Int add_1st = (shift_1st>0) ? (1 << (shift_1st - 1)) : 0;
+
+    /* Horizontal transform */
+
+    for (i = 0; i<uiTrSize; i++)
+    {
+        iSum = 0;
+        for (k = 0; k<uiTrSize; k++)
+        {
+            iSum += iT[i*uiTrSize + k] * block[uiRowNum*uiStride + k];
+        }
+        coeff[i] = (iSum + add_1st) >> shift_1st;
+    }
+}
+
+Void xLIPTrVer(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, UInt uiColNum, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+    UInt i, k;
+    TCoeff iSum;
+    const TMatrixCoeff *iT;
+    UInt uiLog2TrSize = g_aucConvertToBit[uiTrSize] + 2;
+
+    if (uiTrSize == 4)
+    {
+        iT = (useDST ? g_as_DST_MAT_4[TRANSFORM_FORWARD][0] : g_aiT4[TRANSFORM_FORWARD][0]);
+    }
+    else if (uiTrSize == 8)
+    {
+        iT = g_aiT8[TRANSFORM_FORWARD][0];
+    }
+    else if (uiTrSize == 16)
+    {
+        iT = g_aiT16[TRANSFORM_FORWARD][0];
+    }
+    else if (uiTrSize == 32)
+    {
+        iT = g_aiT32[TRANSFORM_FORWARD][0];
+    }
+    else
+    {
+        assert(0);
+    }
+
+    const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
+    const Int shift_1st = (uiLog2TrSize + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+    const Int add_1st = (shift_1st > 0) ? (1 << (shift_1st - 1)) : 0;
+
+    /* Vertical transform */
+
+    for (i = 0; i < uiTrSize; i++)
+    {
+        iSum = 0;
+        for (k = 0; k < uiTrSize; k++)
+        {
+            iSum += iT[i*uiTrSize + k] * block[k*uiStride + uiColNum];
+        }
+        coeff[i] = (iSum + add_1st) >> shift_1st;
+    }
+}
+
+/** NxN inverse transform (2D) using brute force matrix multiplication (3 nested loops)
+*  \param coeff pointer to input data (transform coefficients)
+*  \param block pointer to output data (residual)
+*  \param uiStride stride of output data
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
+*/
+Void xLIPInvTrHor(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, UInt uiRowNum, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+    UInt j, k;
+    TCoeff iSum;
+    const TMatrixCoeff *iT;
+
+    if (uiTrSize == 4)
+    {
+        iT = (useDST ? g_as_DST_MAT_4[TRANSFORM_INVERSE][0] : g_aiT4[TRANSFORM_INVERSE][0]);
+    }
+    else if (uiTrSize == 8)
+    {
+        iT = g_aiT8[TRANSFORM_INVERSE][0];
+    }
+    else if (uiTrSize == 16)
+    {
+        iT = g_aiT16[TRANSFORM_INVERSE][0];
+    }
+    else if (uiTrSize == 32)
+    {
+        iT = g_aiT32[TRANSFORM_INVERSE][0];
+    }
+    else
+    {
+        assert(0);
+    }
+
+    const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+    const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+    const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff clipMaximum = (1 << maxLog2TrDynamicRange) - 1;
+    const Int add_1st = 1 << (shift_1st - 1);
+
+    /* Horizontal transform */
+    for (j = 0; j < uiTrSize; j++)
+    {
+        iSum = 0;
+        for (k = 0; k < uiTrSize; k++)
+        {
+            iSum += iT[k*uiTrSize + j] * coeff[uiRowNum*uiTrSize + k];
+        }
+
+        block[j] = Clip3<TCoeff>(std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max(), (iSum + add_1st) >> shift_1st);
+    }
+}
+
+Void xLIPInvTrVer(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, UInt uiColNum, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+    UInt j, k;
+    TCoeff iSum;
+    const TMatrixCoeff *iT;
+
+    if (uiTrSize == 4)
+    {
+        iT = (useDST ? g_as_DST_MAT_4[TRANSFORM_INVERSE][0] : g_aiT4[TRANSFORM_INVERSE][0]);
+    }
+    else if (uiTrSize == 8)
+    {
+        iT = g_aiT8[TRANSFORM_INVERSE][0];
+    }
+    else if (uiTrSize == 16)
+    {
+        iT = g_aiT16[TRANSFORM_INVERSE][0];
+    }
+    else if (uiTrSize == 32)
+    {
+        iT = g_aiT32[TRANSFORM_INVERSE][0];
+    }
+    else
+    {
+        assert(0);
+    }
+
+    const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+    const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+    const Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+    const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff clipMaximum = (1 << maxLog2TrDynamicRange) - 1;
+    assert(shift_2nd >= 0);
+    const Int add_1st = 1 << (shift_1st - 1);
+    const Int add_2nd = (shift_2nd > 0) ? (1 << (shift_2nd - 1)) : 0;
+
+    /* Vertical transform */
+    for (j = 0; j < uiTrSize; j++)
+    {
+        iSum = 0;
+        for (k = 0; k < uiTrSize; k++)
+        {
+            iSum += iT[k*uiTrSize + uiColNum] * coeff[k*uiTrSize + uiColNum];
+        }
+
+        // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
+        block[j*uiTrSize + uiColNum] = Clip3<TCoeff>(clipMinimum, clipMaximum, (iSum + add_1st) >> shift_1st);
+    }
+}
+#endif
+
 /** 4x4 forward transform implemented using partial butterfly structure (1D)
  *  \param src   input data (residual)
  *  \param dst   output data (transform coefficients)
@@ -3505,6 +3712,164 @@ Void TComTrQuant::invTrSkipDeQuantOneSample( TComTU &rTu, ComponentID compID, TC
   }
 }
 
+#if LINE_BASED_INTRA_PREDICTION
+Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint)
+{
+    TComDataCU    *pcCU = rTu.getCU();
+    const UInt           uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt           uiWidth = rect.width;
+    const UInt           uiHeight = rect.height;
+    const Int            maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+    const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+    const Int            iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID) / 2, maxLog2TrDynamicRange);
+    const Int            scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+    const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
+    const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+
+    assert(scalingListType < SCALING_LIST_NUM);
+    const Int *const piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, (rTu.GetEquivalentLog2TrSize(compID) - 2));
+
+
+    /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+    * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+    * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+    * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+    */
+
+    const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
+    // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+    const Int iAdd = (bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85)) << (iQBits - 9);
+
+    TCoeff transformedCoefficient = resiDiff;
+
+    //// transform-skip
+    //if (iTransformShift >= 0)
+    //{
+    //    transformedCoefficient = resiDiff << iTransformShift;
+    //}
+    //else // for very high bit depths
+    //{
+    //    const Int iTrShiftNeg = -iTransformShift;
+    //    const Int offset = 1 << (iTrShiftNeg - 1);
+    //    transformedCoefficient = (resiDiff + offset) >> iTrShiftNeg;
+    //}
+
+    // quantization
+    const TCoeff iSign = (transformedCoefficient < 0 ? -1 : 1);
+
+    const Int quantisationCoefficient = enableScalingLists ? piQuantCoeff[uiPos] : defaultQuantisationCoefficient;
+
+    const Int64 tmpLevel = (Int64)abs(transformedCoefficient) * quantisationCoefficient;
+
+    const TCoeff quantisedCoefficient = (TCoeff((tmpLevel + iAdd) >> iQBits)) * iSign;
+
+    const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff entropyCodingMaximum = (1 << maxLog2TrDynamicRange) - 1;
+    pcCoeff[uiPos] = Clip3<TCoeff>(entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient);
+}
+
+Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff inSample, Pel &reconSample, const QpParam &cQP, UInt uiPos)
+{
+    TComDataCU    *pcCU = rTu.getCU();
+    const UInt           uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt           uiWidth = rect.width;
+    const UInt           uiHeight = rect.height;
+    const Int            QP_per = cQP.per;
+    const Int            QP_rem = cQP.rem;
+    const Int            maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+#if O0043_BEST_EFFORT_DECODING
+    const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID));
+#else
+    const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
+    const Int            iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID) / 2, maxLog2TrDynamicRange);
+    const Int            scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+    const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
+    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+
+    assert(scalingListType < SCALING_LIST_NUM);
+
+    const Int rightShift = (IQUANT_SHIFT - (iTransformShift + QP_per)) + (enableScalingLists ? LOG2_SCALING_LIST_NEUTRAL_VALUE : 0);
+
+    const TCoeff transformMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff transformMaximum = (1 << maxLog2TrDynamicRange) - 1;
+
+    // Dequantisation
+
+    TCoeff dequantisedSample;
+
+    if (enableScalingLists)
+    {
+        const UInt             dequantCoefBits = 1 + IQUANT_SHIFT + SCALING_LIST_BITS;
+        const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int)* 8) + rightShift) - dequantCoefBits));
+
+        const Intermediate_Int inputMinimum = -(1 << (targetInputBitDepth - 1));
+        const Intermediate_Int inputMaximum = (1 << (targetInputBitDepth - 1)) - 1;
+
+        Int *piDequantCoef = getDequantCoeff(scalingListType, QP_rem, uiLog2TrSize - 2);
+
+        if (rightShift > 0)
+        {
+            const Intermediate_Int iAdd = 1 << (rightShift - 1);
+            const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+            const Intermediate_Int iCoeffQ = ((Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) + iAdd) >> rightShift;
+
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+        }
+        else
+        {
+            const Int              leftShift = -rightShift;
+            const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+            const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) << leftShift;
+
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+        }
+    }
+    else
+    {
+        const Int scale = g_invQuantScales[QP_rem];
+        const Int scaleBits = (IQUANT_SHIFT + 1);
+
+        const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int)* 8) + rightShift) - scaleBits));
+        const Intermediate_Int inputMinimum = -(1 << (targetInputBitDepth - 1));
+        const Intermediate_Int inputMaximum = (1 << (targetInputBitDepth - 1)) - 1;
+
+        if (rightShift > 0)
+        {
+            const Intermediate_Int iAdd = 1 << (rightShift - 1);
+            const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+            const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
+
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+        }
+        else
+        {
+            const Int              leftShift = -rightShift;
+            const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+            const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale) << leftShift;
+
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+        }
+    }
+    reconSample = Pel(dequantisedSample);
+
+    //// Inverse transform-skip
+
+    //if (iTransformShift >= 0)
+    //{
+    //    const TCoeff offset = iTransformShift == 0 ? 0 : (1 << (iTransformShift - 1));
+    //    reconSample = Pel((dequantisedSample + offset) >> iTransformShift);
+    //}
+    //else //for very high bit depths
+    //{
+    //    const Int iTrShiftNeg = -iTransformShift;
+    //    reconSample = Pel(dequantisedSample << iTrShiftNeg);
+    //}
+}
+#endif
 
 Void TComTrQuant::crossComponentPrediction(       TComTU      & rTu,
                                             const ComponentID   compID,
