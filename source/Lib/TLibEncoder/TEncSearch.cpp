@@ -1459,7 +1459,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;
   const Bool           bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();
         Pel *const     lumaResidualForEstimate              = bUseReconstructedResidualForEstimate ? reconstructedLumaResidual : encoderLumaResidual;
-        TCoeff *pcQuantResi = new TCoeff[uiHeight * uiStride];
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTRA);
 #endif
@@ -1467,7 +1466,7 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   //===== init availability pattern =====
   DEBUG_STRING_NEW(sTemp)
  
-  TCoeff uiAbsSum1 = 0;
+  TCoeff uiAbsSum = 0;
   const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 
   initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
@@ -1475,35 +1474,17 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   //===== get prediction signal =====
   {
     Pel *Resi = new Pel[uiWidth];
-    TCoeff *pCoeff = pcQuantResi;
+    TCoeff *pCoeff;
     const QpParam cQP(*pcCU, COMPONENT_Y);
     //printf("\n===============\n");
     for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
         predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
-
-        m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, uiAbsSum1, cQP);
+        pCoeff = pcCoeff + uiLineNum * uiWidth;
+        m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, uiAbsSum, cQP);
         m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, cQP);
         pCoeff += uiStride;
     }
     delete[] Resi;
-  }
-
-  //===== get residual signal after line transform and quantization =====
-  {
-    // get residual
-    TCoeff*  pQuatResi = pcQuantResi;
-    Pel*  pResi     = piResi;
-
-    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
-    {
-      for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-      {
-        pResi[uiX] = (Pel)pQuatResi[uiX];
-      }
-
-      pResi += uiStride;
-      pQuatResi += uiStride;
-    }
   }
 
   //===== transform and quantization =====
@@ -1514,7 +1495,7 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   }
 
   //--- transform and quantization ---
-  TCoeff uiAbsSum = 0;
+  TCoeff uiAbsSum1 = 0;
   if (bIsLuma)
   {
     pcCU       ->setTrIdxSubParts ( uiTrDepth, uiAbsPartIdx, uiFullDepth );
@@ -1526,32 +1507,11 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   m_pcTrQuant->selectLambda     (compID);
 #endif
 
-  m_pcTrQuant->transformNxN     ( rTu, compID, piResi, uiStride, pcCoeff,
-#if ADAPTIVE_QP_SELECTION
-    pcArlCoeff,
-#endif
-    uiAbsSum, cQP
-    );
-  assert(uiAbsSum1 == uiAbsSum);
-  //--- inverse transform ---
-#if DEBUG_STRING
-  if ( (uiAbsSum > 0) || (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) )
-#else
-  if ( uiAbsSum > 0 )
-#endif
-  {
-    m_pcTrQuant->invTransformNxN ( rTu, compID, piResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO_OPTIONAL(&sDebug, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask)) );
-  }
-  else
-  {
-    Pel* pResi = piResi;
-    memset( pcCoeff, 0, sizeof( TCoeff ) * uiWidth * uiHeight );
-    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
-    {
-      memset( pResi, 0, sizeof( Pel ) * uiWidth );
-      pResi += uiStride;
-    }
-  }
+  //set the CBF
+  const UInt uiOrgTrDepth = rTu.GetTransformDepthRel();
+  pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
+
+
 #if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
   for (Int y = 0; y < uiHeight; y++){
       m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, piResi + y*uiStride, pcCoeff + y*uiWidth, cQP);
@@ -1587,8 +1547,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
-
-  delete[] pcQuantResi;
 }
 #endif
 
