@@ -3852,8 +3852,10 @@ Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const
     const UInt           uiHeight = rect.height;
     const Int            maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
     const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID)
-    const Int            iTransformShift = getTransformShift(channelBitDepth,  / 2, maxLog2TrDynamicRange);
+    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+    const UInt           uiDCTScalingTable[5] = { 128, 181, 256, 362, 362 }; // 4, 8, 6, 32; these values have been multiplied by 64; =/(N^1/2) = >>(M/2) = 64/(uiDCTScalingTable[uiLog2TrSize - 2]
+    const Int            uiDCTScalingFactor = uiDCTScalingTable[uiLog2TrSize - 2];
+    const Int            iTransformShift = getTransformShift(channelBitDepth,  0, maxLog2TrDynamicRange);
     const Int            scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
     const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
     const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];
@@ -3892,12 +3894,17 @@ Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const
 
     const Int quantisationCoefficient = enableScalingLists ? piQuantCoeff[uiPos] : defaultQuantisationCoefficient;
 
-    const Int64 tmpLevel = (Int64)abs(transformedCoefficient) * quantisationCoefficient;
+    const Int64 tmpLevel = (Int64)abs(transformedCoefficient) * quantisationCoefficient*uiDCTScalingFactor / 64;
 
     const TCoeff quantisedCoefficient = (TCoeff((tmpLevel + iAdd) >> iQBits)) * iSign;
 
     const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
     const TCoeff entropyCodingMaximum = (1 << maxLog2TrDynamicRange) - 1;
+#if 0
+    if (quantisedCoefficient > entropyCodingMaximum || quantisedCoefficient < entropyCodingMinimum){
+        printf("error!");
+    }
+#endif
     pcCoeff[uiPos] = Clip3<TCoeff>(entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient);
 }
 
@@ -3916,10 +3923,12 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
 #else
     const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
 #endif
-    const Int            iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID) / 2, maxLog2TrDynamicRange);
+    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+    const UInt           uiDCTScalingTable[5] = { 128, 181, 256, 362, 362 }; // 4, 8, 6, 32; these values have been multiplied by 64; =/(N^1/2) = >>(M/2) = 64/(uiDCTScalingTable[uiLog2TrSize - 2]
+    const Int            uiDCTScalingFactor = uiDCTScalingTable[uiLog2TrSize - 2];
+    const Int            iTransformShift = getTransformShift(channelBitDepth, 0, maxLog2TrDynamicRange);
     const Int            scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
     const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
-    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
 
     assert(scalingListType < SCALING_LIST_NUM);
 
@@ -3947,16 +3956,16 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
             const Intermediate_Int iAdd = 1 << (rightShift - 1);
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = ((Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) + iAdd) >> rightShift;
-
-            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+            const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ1));
         }
         else
         {
             const Int              leftShift = -rightShift;
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) << leftShift;
-
-            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+            const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ1));
         }
     }
     else
@@ -3973,16 +3982,26 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
             const Intermediate_Int iAdd = 1 << (rightShift - 1);
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
-
-            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+            const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
+#if 0
+            if (iCoeffQ1 > transformMaximum || iCoeffQ1 < transformMinimum){
+                printf("error!");
+            }
+#endif
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ1));
         }
         else
         {
             const Int              leftShift = -rightShift;
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale) << leftShift;
-
-            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ));
+            const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
+#if 0
+            if (iCoeffQ1 > transformMaximum || iCoeffQ1 < transformMinimum){
+                printf("error!");
+            }
+#endif
+            dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum, transformMaximum, iCoeffQ1));
         }
     }
     rpcCoeff[uiPos] = Pel(dequantisedSample);
