@@ -2626,8 +2626,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
             const Int iHeight = rect.height;
             const Int iWidth = rect.width;
-            if (iWidth > 32)
-                continue;
             Pel *Resi = new Pel[iWidth];
             TCoeff *pcCoeff = new TCoeff[iWidth];
             const QpParam cQP(*pcCU, COMPONENT_Y);

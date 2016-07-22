@@ -1932,10 +1932,16 @@ Void TComTrQuant::LIPtransformNxN(TComTU   & rTu,
     std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to transform\n";
     printBlock(pcResidual, uiWidth, 1, 0);
 #endif
-    assert((pcCU->getSlice()->getSPS()->getMaxTrSize() >= uiWidth));
 
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-    xLIPTrHor(channelBitDepth, pcResidual, pTmpCoeff, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+    if (pcCU->getSlice()->getSPS()->getMaxTrSize() < uiWidth){
+        assert(uiWidth == 64);
+        UInt uiBlkWidth = 32;
+        xLIPTrHor(channelBitDepth, pcResidual, pTmpCoeff, uiBlkWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+        xLIPTrHor(channelBitDepth, pcResidual + uiBlkWidth, pTmpCoeff + uiBlkWidth, uiBlkWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+    }
+    else
+        xLIPTrHor(channelBitDepth, pcResidual, pTmpCoeff, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
 
 #if DEBUG_TRANSFORM_AND_QUANTISE
     std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between transform and quantiser\n";
@@ -2002,7 +2008,14 @@ Void TComTrQuant::invLIPTransformNxN(TComTU        &rTu,
 #else
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
 #endif
-    xLIPInvTrHor(channelBitDepth, pTmpCoeff, pcResidual, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+    if (pcCU->getSlice()->getSPS()->getMaxTrSize() < uiWidth){
+        assert(uiWidth == 64);
+        UInt uiBlkWidth = 32;
+        xLIPInvTrHor(channelBitDepth, pTmpCoeff, pcResidual, uiBlkWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+        xLIPInvTrHor(channelBitDepth, pTmpCoeff + uiBlkWidth, pcResidual + uiBlkWidth, uiBlkWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
+    }
+    else
+        xLIPInvTrHor(channelBitDepth, pTmpCoeff, pcResidual, uiWidth, rTu.useDST(compID), pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)));
 
 #if DEBUG_STRING
     if (psDebug)
@@ -3839,7 +3852,8 @@ Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const
     const UInt           uiHeight = rect.height;
     const Int            maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
     const Int            channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-    const Int            iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID) / 2, maxLog2TrDynamicRange);
+    const UInt           uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID)
+    const Int            iTransformShift = getTransformShift(channelBitDepth,  / 2, maxLog2TrDynamicRange);
     const Int            scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
     const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
     const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];
