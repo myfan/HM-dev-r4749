@@ -1913,7 +1913,7 @@ Void TComTrQuant::LIPtransformNxN(TComTU   & rTu,
     const ComponentID     compID,
     Pel          *  pcResidual,
     TCoeff       *  rpcCoeff,
-    //TCoeff        & uiAbsSum,
+    TCoeff        & uiAbsSum,
     const QpParam       & cQP
     )
 {
@@ -1925,7 +1925,6 @@ Void TComTrQuant::LIPtransformNxN(TComTU   & rTu,
     const UInt uiOrgTrDepth = rTu.GetTransformDepthRel();
     TCoeff *pTmpCoeff = new TCoeff[uiWidth];
 
-    //uiAbsSum = 0;
     //transform and quantise
 
 #if DEBUG_TRANSFORM_AND_QUANTISE
@@ -1950,6 +1949,7 @@ Void TComTrQuant::LIPtransformNxN(TComTU   & rTu,
     // quantization
     for (Int x = 0; x < uiWidth; x++){
         LIPQuantOneSample(rTu, compID, pTmpCoeff[x], rpcCoeff, x, cQP, 1);
+        uiAbsSum += abs(rpcCoeff[x]);
     }
 #if DEBUG_TRANSFORM_AND_QUANTISE
     std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
@@ -3900,7 +3900,7 @@ Void TComTrQuant::LIPQuantOneSample(TComTU &rTu, const ComponentID compID, const
 
     const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
     const TCoeff entropyCodingMaximum = (1 << maxLog2TrDynamicRange) - 1;
-#if 0
+#if 1
     if (quantisedCoefficient > entropyCodingMaximum || quantisedCoefficient < entropyCodingMinimum){
         printf("error!");
     }
@@ -3983,7 +3983,7 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
             const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
-#if 0
+#if 1
             if (iCoeffQ1 > transformMaximum || iCoeffQ1 < transformMinimum){
                 printf("error!");
             }
@@ -3996,7 +3996,7 @@ Void TComTrQuant::LIPDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff in
             const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
             const Intermediate_Int iCoeffQ = (Intermediate_Int(clipQCoef) * scale) << leftShift;
             const Intermediate_Int iCoeffQ1 = iCoeffQ * 64 / uiDCTScalingFactor;
-#if 0
+#if 1
             if (iCoeffQ1 > transformMaximum || iCoeffQ1 < transformMinimum){
                 printf("error!");
             }

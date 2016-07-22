@@ -1407,7 +1407,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
                                       const ComponentID compID,
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
-                                           ,Int         default0Save1Load2
                                      )
 {
   if (!rTu.ProcessComponentSection(compID))
@@ -1467,73 +1466,27 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 
   //===== init availability pattern =====
   DEBUG_STRING_NEW(sTemp)
-  
-#if !DEBUG_STRING
-  if( default0Save1Load2 != 2 )
-#endif
+ 
+  TCoeff uiAbsSum1 = 0;
+  const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+
+  initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
+
+  //===== get prediction signal =====
   {
-    const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+    Pel *Resi = new Pel[uiWidth];
+    TCoeff *pCoeff = pcQuantResi;
+    const QpParam cQP(*pcCU, COMPONENT_Y);
+    //printf("\n===============\n");
+    for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
+        predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
 
-    initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
-
-    //===== get prediction signal =====
-    {
-        Pel *Resi = new Pel[uiWidth];
-        TCoeff *pCoeff = pcQuantResi;
-        const QpParam cQP(*pcCU, COMPONENT_Y);
-        //printf("\n===============\n");
-        for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
-            predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
-            
-            m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, cQP);
-            m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, cQP);
-
-            //for (Int x = 0; x < uiWidth; x++){
-            //    //printf(" (%d ", Resi[x]);
-            //    m_pcTrQuant->transformSkipQuantOneSample(rTu, COMPONENT_Y, Resi[x], pCoeff, x, cQP, 1);
-
-            //    //printf("%d ", pcQuantResi[x]);
-            //    m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pCoeff[x], Resi[x], cQP, x);
-            //    //printf("%d)", Resi[x]);
-            //}
-            pCoeff += uiStride;
-        }
-        delete[] Resi;
+        m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, uiAbsSum1, cQP);
+        m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, cQP);
+        pCoeff += uiStride;
     }
-
-    // save prediction
-    if( default0Save1Load2 == 1 )
-    {
-      Pel*  pPred   = piPred;
-      Pel*  pPredBuf = m_pSharedPredTransformSkip[compID];
-      Int k = 0;
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
-      {
-        for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-        {
-          pPredBuf[ k ++ ] = pPred[ uiX ];
-        }
-        pPred += uiStride;
-      }
-    }
+    delete[] Resi;
   }
-#if !DEBUG_STRING
-  else
-  {
-    // load prediction
-    Pel*  pPred   = piPred;
-    Pel*  pPredBuf = m_pSharedPredTransformSkip[compID];
-    Int k = 0;
-    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
-    {
-      for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-      {
-        pPred[ uiX ] = pPredBuf[ k ++ ];
-      }
-      pPred += uiStride;
-    }
-  }
-#endif
 
   //===== get residual signal after line transform and quantization =====
   {
@@ -1550,22 +1503,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 
       pResi += uiStride;
       pQuatResi += uiStride;
-    }
-  }
-
-  if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
-  {
-    if (bUseCrossCPrediction)
-    {
-      if (xCalcCrossComponentPredictionAlpha( rTu, compID, lumaResidualForEstimate, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride ) == 0)
-      {
-        return;
-      }
-      TComTrQuant::crossComponentPrediction ( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, false );
-    }
-    else if (isLuma(compID) && !bUseReconstructedResidualForEstimate)
-    {
-      xStoreCrossComponentPredictionResult( encoderLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );
     }
   }
 
@@ -1595,7 +1532,7 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 #endif
     uiAbsSum, cQP
     );
-
+  assert(uiAbsSum1 == uiAbsSum);
   //--- inverse transform ---
 #if DEBUG_STRING
   if ( (uiAbsSum > 0) || (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) )
@@ -1629,71 +1566,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
     Pel* pRecQt     = piRecQt;
     Pel* pRecIPred  = piRecIPred;
 
-    if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
-    {
-      if (bUseCrossCPrediction)
-      {
-        TComTrQuant::crossComponentPrediction( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, true );
-      }
-      else if (isLuma(compID))
-      {
-        xStoreCrossComponentPredictionResult( reconstructedLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );
-      }
-    }
-
- #if DEBUG_STRING
-    std::stringstream ss(stringstream::out);
-    const Bool bDebugPred=((DebugOptionList::DebugString_Pred.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
-    const Bool bDebugResi=((DebugOptionList::DebugString_Resi.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
-    const Bool bDebugReco=((DebugOptionList::DebugString_Reco.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
-
-    if (bDebugPred || bDebugResi || bDebugReco)
-    {
-      ss << "###: " << "CompID: " << compID << " pred mode (ch/fin): " << uiChPredMode << "/" << uiChFinalMode << " absPartIdx: " << rTu.GetAbsPartIdxTU() << "\n";
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
-      {
-        ss << "###: ";
-        if (bDebugPred)
-        {
-          ss << " - pred: ";
-          for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-          {
-            ss << pPred[ uiX ] << ", ";
-          }
-        }
-        if (bDebugResi)
-        {
-          ss << " - resi: ";
-        }
-        for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-        {
-          if (bDebugResi)
-          {
-            ss << pResi[ uiX ] << ", ";
-          }
-          pReco    [ uiX ] = Pel(ClipBD<Int>( Int(pPred[uiX]) + Int(pResi[uiX]), bitDepth ));
-          pRecQt   [ uiX ] = pReco[ uiX ];
-          pRecIPred[ uiX ] = pReco[ uiX ];
-        }
-        if (bDebugReco)
-        {
-          ss << " - reco: ";
-          for( UInt uiX = 0; uiX < uiWidth; uiX++ )
-          {
-            ss << pReco[ uiX ] << ", ";
-          }
-        }
-        pPred     += uiStride;
-        pResi     += uiStride;
-        pReco     += uiStride;
-        pRecQt    += uiRecQtStride;
-        pRecIPred += uiRecIPredStride;
-        ss << "\n";
-      }
-      DEBUG_STRING_APPEND(sDebug, ss.str())
-    }
-    else
-#endif
     {
 
       for( UInt uiY = 0; uiY < uiHeight; uiY++ )
@@ -1836,7 +1708,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         const UInt           uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
         const UInt           uiChFinalMode = ((chFmt == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
         if (!isChroma(COMPONENT_Y) && (uiChFinalMode == VER_IDX)){
-            xIntraCodingTUBlockLIP(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2);
+            xIntraCodingTUBlockLIP(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString));
         }
         else
 #endif
@@ -2626,12 +2498,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
             const Int iHeight = rect.height;
             const Int iWidth = rect.width;
+            TCoeff uiAbsSum = 0;
             Pel *Resi = new Pel[iWidth];
             TCoeff *pcCoeff = new TCoeff[iWidth];
             const QpParam cQP(*pcCU, COMPONENT_Y);
             for (Int uiLineNum = 0; uiLineNum < iHeight; uiLineNum++){
                 predIntraAngLIP(COMPONENT_Y, uiMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, tuRecurseWithPU);
-                m_pcTrQuant->LIPtransformNxN(tuRecurseWithPU, COMPONENT_Y, Resi, pcCoeff, cQP);
+                m_pcTrQuant->LIPtransformNxN(tuRecurseWithPU, COMPONENT_Y, Resi, pcCoeff, uiAbsSum, cQP);
                 m_pcTrQuant->invLIPTransformNxN(tuRecurseWithPU, COMPONENT_Y, Resi, pcCoeff, cQP);
             }
             delete[] Resi;

@@ -258,7 +258,6 @@ protected:
                                     const ComponentID   compID,
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
-                                         ,Int           default0Save1Load2 = 0
                                    );
 
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,

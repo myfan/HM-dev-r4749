@@ -142,7 +142,7 @@ public:
                      const ComponentID     compID,
                            Pel           * pcResidual,
                            TCoeff        * rpcCoeff,
-                           //TCoeff         & uiAbsSum,
+                           TCoeff         & uiAbsSum,
                      const QpParam        & cQP
                     );
 
