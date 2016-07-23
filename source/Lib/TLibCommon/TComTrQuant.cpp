@@ -1691,20 +1691,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   {
     uiAbsSum = 0;
     //transform and quantise
-#if LINE_BASED_INTRA_PREDICTION
-    TComDataCU *pcCU = rTu.getCU();
-    const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();
-    const ChannelType chType = toChannelType(compID);
-    const UInt uiChPredMode = pcCU->getIntraDir(chType, uiAbsPartIdx);
-    const TComSPS *sps = pcCU->getSlice()->getSPS();
-    const UInt partsPerMinCU = 1 << (2 * (sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
-    const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-    const UInt uiChFinalMode = ((chFmt == CHROMA_422) && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-
-    if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiChFinalMode == VER_IDX)))
-#else
     if(pcCU->getCUTransquantBypass(uiAbsPartIdx))
-#endif
     {
       const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);
       const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;
@@ -1814,19 +1801,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   }
 #endif
 
-#if LINE_BASED_INTRA_PREDICTION
-  const ChromaFormat chFmt = pcCU->getPic()->getPicYuvRec()->getChromaFormat();
-  const ChannelType chType = toChannelType(compID);
-  const UInt uiChPredMode = pcCU->getIntraDir(chType, uiAbsPartIdx);
-  const TComSPS *sps = pcCU->getSlice()->getSPS();
-  const UInt partsPerMinCU = 1 << (2 * (sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
-  const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-  const UInt uiChFinalMode = ((chFmt == CHROMA_422) && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-
-  if (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiChFinalMode == VER_IDX)))
-#else
-  if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
-#endif
+  if(pcCU->getCUTransquantBypass(uiAbsPartIdx))
   {
     const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);
     const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;

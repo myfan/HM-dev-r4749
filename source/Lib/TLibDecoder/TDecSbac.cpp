@@ -1341,6 +1341,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       }
     }
   }
+
 #if !LINE_BASED_INTRA_PREDICTION
   Int uiIntraMode = -1;
   const Bool       bIsLuma = isLuma(compID);

@@ -234,6 +234,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
+
 #if 0
   if ((pCtu->getCtuRsAddr() / pCtu->getPic()->getFrameWidthInCtus() == 6) && (pCtu->getCtuRsAddr() % pCtu->getPic()->getFrameWidthInCtus() == 10))
   {
@@ -1353,6 +1354,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
       return; // only check necessary 2Nx2N Intra in fast deltaqp mode
     }
   }
+
 #if 1
   if ((rpcBestCU->getCUPelY() == 8) && (rpcBestCU->getCUPelX() == 48)){
       printf("error!\n");

@@ -1471,37 +1471,36 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
 
   initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 
-  //===== get prediction signal =====
+  //===== get prediction signal, transform and quantization =====
   {
     Pel *Resi = new Pel[uiWidth];
+    Pel *QtResi = piResi;
     TCoeff *pCoeff;
     const QpParam cQP(*pcCU, COMPONENT_Y);
     //printf("\n===============\n");
     for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
         predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
         pCoeff = pcCoeff + uiLineNum * uiWidth;
+        
         m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, uiAbsSum, cQP);
         m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, cQP);
+        memcpy(QtResi, Resi, uiWidth * sizeof(Pel)); // the residual must be updated after the prediction of the current line
         pCoeff += uiStride;
+        QtResi += uiStride;
     }
     delete[] Resi;
   }
 
-  //===== transform and quantization =====
   //--- init rate estimation arrays for RDOQ ---
   if( useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() )
   {
     m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType );
   }
 
-  //--- transform and quantization ---
-  TCoeff uiAbsSum1 = 0;
   if (bIsLuma)
   {
     pcCU       ->setTrIdxSubParts ( uiTrDepth, uiAbsPartIdx, uiFullDepth );
   }
-
-  const QpParam cQP(*pcCU, compID);
 
 #if RDOQ_CHROMA_LAMBDA
   m_pcTrQuant->selectLambda     (compID);
@@ -1510,13 +1509,6 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
   //set the CBF
   const UInt uiOrgTrDepth = rTu.GetTransformDepthRel();
   pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
-
-
-#if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
-  for (Int y = 0; y < uiHeight; y++){
-      m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, piResi + y*uiStride, pcCoeff + y*uiWidth, cQP);
-  }
-#endif
 
   //===== reconstruction =====
   {
@@ -1670,7 +1662,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         }
         else
 #endif
-        xIntraCodingTUBlock(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2);
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
 
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
 
@@ -1753,7 +1745,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       }
       else
 #endif
-      xIntraCodingTUBlock(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
 
       if( bCheckSplit )
       {
@@ -2451,6 +2443,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         Distortion uiSad  = 0;
 
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+
 #if LINE_BASED_INTRA_PREDICTION
         if (!isChroma(COMPONENT_Y) && (modeIdx == VER_IDX)){
             const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
