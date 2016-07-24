@@ -754,7 +754,7 @@ TDecCu::xIntraRecBlkLIP(    TComYuv*    pcRecoYuv,
       //TCoeff *pcCoeff = new TCoeff[uiWidth];
       for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
           //m_pcTrQuant->invTrSkipDeQuantOneSample(rTu, COMPONENT_Y, pcCoeff[x], Resi[x], cQP, x);
-          m_pcPrediction->predIntraAngLIP(compID, uiChFinalMode, uiLineNum, 0, 0, piResi, piPred, uiStride, rTu);
+          m_pcPrediction->predIntraAngLIP(compID, uiChFinalMode, uiLineNum, 0, 0, piResi, piPred, uiStride, rTu, bUseFilteredPredictions);
       }
   }
 

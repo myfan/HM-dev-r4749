@@ -1479,7 +1479,7 @@ Void TEncSearch::xIntraCodingTUBlockLIP(    TComYuv*    pcOrgYuv,
     const QpParam cQP(*pcCU, COMPONENT_Y);
     //printf("\n===============\n");
     for (Int uiLineNum = 0; uiLineNum < uiHeight; uiLineNum++){
-        predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu);
+        predIntraAngLIP(compID, uiChFinalMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, rTu, bUseFilteredPredictions);
         pCoeff = pcCoeff + uiLineNum * uiWidth;
         
         m_pcTrQuant->LIPtransformNxN(rTu, COMPONENT_Y, Resi, pCoeff, uiAbsSum, cQP);
@@ -2444,7 +2444,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             TCoeff *pcCoeff = new TCoeff[iWidth];
             const QpParam cQP(*pcCU, COMPONENT_Y);
             for (Int uiLineNum = 0; uiLineNum < iHeight; uiLineNum++){
-                predIntraAngLIP(COMPONENT_Y, uiMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, tuRecurseWithPU);
+                predIntraAngLIP(COMPONENT_Y, uiMode, uiLineNum, piOrg, uiStride, Resi, piPred, uiStride, tuRecurseWithPU, bUseFilter);
                 m_pcTrQuant->LIPtransformNxN(tuRecurseWithPU, COMPONENT_Y, Resi, pcCoeff, uiAbsSum, cQP);
                 m_pcTrQuant->invLIPTransformNxN(tuRecurseWithPU, COMPONENT_Y, Resi, pcCoeff, cQP);
             }

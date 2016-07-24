@@ -474,7 +474,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 #if LINE_BASED_INTRA_PREDICTION
 Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, UInt uiLineNum, Pel* piOrg /* Will be null for decoding */, UInt uiOrgStride,
-                                     Pel* piResi /* Will be null for encoding */, Pel* piPred, UInt uiStride, TComTU &rTu)
+                                     Pel* piResi /* Will be null for encoding */, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples)
 {
     const ChannelType    channelType = toChannelType(compID);
     const TComRectangle &rect = rTu.getRect(isLuma(compID) ? COMPONENT_Y : COMPONENT_Cb);
@@ -497,7 +497,7 @@ Void TComPrediction::predIntraAngLIP(const ComponentID compID, UInt uiDirMode, U
     // get starting pixel in block
     const Int sw = (2 * iWidth + 1);
 
-    const Pel *ptrSrc = getPredictorPtr(compID, false);
+    const Pel *ptrSrc = getPredictorPtr(compID, bUseFilteredPredSamples);
     
     // top row filled with reference samples
     // remaining rows filled with piOrd data (if available)
