@@ -1951,7 +1951,7 @@ Void TComTrQuant::invLIPTransformNxN(TComTU        &rTu,
     if (psDebug)
     {
         std::stringstream ss(stringstream::out);
-        printBlockToStream(ss, (compID == 0) ? "###InvTran ip Ch0: " : ((compID == 1) ? "###InvTran ip Ch1: " : "###InvTran ip Ch2: "), pcCoeff, uiWidth, uiHeight, uiWidth);
+        printBlockToStream(ss, (compID == 0) ? "###InvTran ip Ch0: " : ((compID == 1) ? "###InvTran ip Ch1: " : "###InvTran ip Ch2: "), pcCoeff, uiWidth, 1, 0);
         DEBUG_STRING_APPEND((*psDebug), ss.str())
     }
 #endif
@@ -1973,7 +1973,7 @@ Void TComTrQuant::invLIPTransformNxN(TComTU        &rTu,
     if (psDebug)
     {
         std::stringstream ss(stringstream::out);
-        printBlockToStream(ss, "###InvTran deq: ", m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+        printBlockToStream(ss, "###InvTran deq: ", pTmpCoeff, uiWidth, 1, 0);
         (*psDebug) += ss.str();
     }
 #endif
@@ -1996,7 +1996,7 @@ Void TComTrQuant::invLIPTransformNxN(TComTU        &rTu,
     if (psDebug)
     {
         std::stringstream ss(stringstream::out);
-        printBlockToStream(ss, "###InvTran resi: ", pcResidual, uiWidth, uiHeight, uiStride);
+        printBlockToStream(ss, "###InvTran resi: ", pcResidual, uiWidth, 1, 0);
         (*psDebug) += ss.str();
         (*psDebug) += "(<- was a Transformed block)\n";
     }

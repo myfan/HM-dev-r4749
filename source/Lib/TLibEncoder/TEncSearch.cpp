@@ -1624,6 +1624,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   {
     if(checkTransformSkip == true)
     {
+      assert(rTu.getRect(COMPONENT_Y).width == 4);
       //----- store original entropy coding status -----
       m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
 
@@ -1648,20 +1649,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-#if LINE_BASED_INTRA_PREDICTION
-        const Bool           bIsLuma = isLuma(COMPONENT_Y);
-        const ChannelType    chType = toChannelType(COMPONENT_Y);
-        const UInt           uiChPredMode = pcCU->getIntraDir(chType, uiAbsPartIdx);
-        const TComSPS        &sps = *(pcCU->getSlice()->getSPS());
-        const UInt           partsPerMinCU = 1 << (2 * (sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
-        const ChromaFormat   chFmt = pcOrgYuv->getChromaFormat();
-        const UInt           uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-        const UInt           uiChFinalMode = ((chFmt == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-        if (!isChroma(COMPONENT_Y) && (uiChFinalMode == VER_IDX)){
-            xIntraCodingTUBlockLIP(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString));
-        }
-        else
-#endif
+
         xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
 
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
@@ -1732,6 +1720,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
       pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
 #if LINE_BASED_INTRA_PREDICTION
+      assert(rTu.getRect(COMPONENT_Y).width >= 8 || pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_NxN);
       const Bool           bIsLuma = isLuma(COMPONENT_Y);
       const ChannelType    chType = toChannelType(COMPONENT_Y);
       const UInt           uiChPredMode = pcCU->getIntraDir(chType, uiAbsPartIdx);
@@ -2445,10 +2434,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 
 #if LINE_BASED_INTRA_PREDICTION
-        if (!isChroma(COMPONENT_Y) && (modeIdx == VER_IDX)){
-            const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
-            const Int iHeight = rect.height;
-            const Int iWidth = rect.width;
+        const TComRectangle &rect = tuRecurseWithPU.getRect(COMPONENT_Y);
+        const Int iHeight = rect.height;
+        const Int iWidth = rect.width;
+        if (!isChroma(COMPONENT_Y) && (modeIdx == VER_IDX) && ((iWidth >= 8) || pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_NxN)){
+            
             TCoeff uiAbsSum = 0;
             Pel *Resi = new Pel[iWidth];
             TCoeff *pcCoeff = new TCoeff[iWidth];

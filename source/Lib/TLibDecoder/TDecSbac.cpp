@@ -1306,7 +1306,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       uiIntraMode = (uiIntraMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;
       uiIntraMode = ((rTu.GetChromaFormat() == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiIntraMode] : uiIntraMode;
   }
-  Bool isLIPMode = (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiIntraMode == VER_IDX));
+  Bool isLIPMode = (pcCU->isIntra(uiAbsPartIdx) && !isChroma(compID) && (uiIntraMode == VER_IDX) && ((uiWidth >= 8) || pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_NxN));
   if ((pcCU->getCUTransquantBypass(uiAbsPartIdx)) || isLIPMode)
 #else
   if (pcCU->getCUTransquantBypass(uiAbsPartIdx))

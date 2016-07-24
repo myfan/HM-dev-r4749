@@ -744,11 +744,10 @@ TDecCu::xIntraRecBlkLIP(    TComYuv*    pcRecoYuv,
     }
   }
 
-#if LINE_BASED_INTRA_PREDICTION // inverse Line transform and quantization
+  // inverse Line transform and quantization
   for (Int y = 0; y < uiHeight; y++){
       m_pcTrQuant->invLIPTransformNxN(rTu, COMPONENT_Y, piResi + y * uiStride, pcCoeff + y * uiWidth, cQP);
   }
-#endif
 
   //===== get prediction signal =====
   if(!isChroma(compID) && (uiChFinalMode == VER_IDX)){
@@ -924,7 +923,9 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
       const UInt partsPerMinCU = 1 << (2 * (sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
       const UInt uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !isLuma(chType)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
       const UInt uiChFinalMode = ((chFmt == CHROMA_422) && !isLuma(chType)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-      if (uiChFinalMode == VER_IDX)
+      const TComRectangle &tuRect = rTu.getRect(COMPONENT_Y);
+      const UInt uiWidth = tuRect.width;
+      if ((uiChFinalMode == VER_IDX) && ((uiWidth >= 8) || pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_NxN))
         xIntraRecBlkLIP(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu);
       else
 #endif
